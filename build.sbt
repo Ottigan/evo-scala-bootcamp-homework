@@ -1,0 +1,5 @@
+name := "evo_scala_bootcamp_homeworks"
+
+version := "0.1"
+
+scalaVersion := "2.13.3"
