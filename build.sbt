@@ -1,4 +1,4 @@
-name := "evo_scala_bootcamp_homeworks"
+name := "evo-scala-bootcamp-homework"
 
 version := "0.1"
 
