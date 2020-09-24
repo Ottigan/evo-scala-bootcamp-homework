@@ -18,7 +18,10 @@ object Basics extends App {
       }
     }
 
-    if (a >= b) helper(a, b, a)
-    else helper(a, b, b)
+    if (a == 0 && b == 0) 0
+    else if (a == 0) Math.abs(b)
+    else if (b == 0) Math.abs(a)
+    else if (Math.abs(a) >= Math.abs(b)) helper(a, b, b)
+    else helper(a, b, a)
   }
 }
