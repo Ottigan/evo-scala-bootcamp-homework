@@ -2,14 +2,16 @@ package homework.basics
 
 object ClassesAndTraits extends App {
 
-  sealed trait Shape2D extends Located2D with Bounded2D with Movable2D {
+  sealed trait Shape2D extends Shape with Located2D with Bounded2D {
     def area: Double
   }
 
-  sealed trait Shape3D extends Located3D with Bounded3D with Movable3D {
+  sealed trait Shape3D extends Shape with Located3D with Bounded3D {
     def surfaceArea: Double
     def volume: Double
   }
+
+  sealed trait Shape extends Movable
 
   sealed trait Located2D {
     def x: Double
@@ -38,12 +40,8 @@ object ClassesAndTraits extends App {
     def maxZ: Double
   }
 
-  sealed trait Movable2D {
-    def move(dx: Double, dy: Double): Shape2D
-  }
-
-  sealed trait Movable3D {
-    def move(dx: Double, dy: Double, dz: Double): Shape3D
+  sealed trait Movable {
+    def move(dx: Double, dy: Double, dz: Double): Shape
   }
 
   object Origin2D extends Located2D {
@@ -63,7 +61,7 @@ object ClassesAndTraits extends App {
     override def minY: Double = y
     override def maxY: Double = y
     override def area: Double = 0
-    override def move(dx: Double, dy: Double): Point2D = Point2D(x + dx, y + dy)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Point2D = Point2D(x + dx, y + dy)
   }
 
   final case class Point3D(x: Double, y: Double, z: Double) extends Shape3D {
@@ -75,7 +73,7 @@ object ClassesAndTraits extends App {
     override def maxZ: Double = z
     override def surfaceArea: Double = 0
     override def volume: Double = 0
-    override def move(dx: Double, dy: Double, dz: Double): Point3D = Point3D(x + dx, y + dy, z + dz)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Point3D = Point3D(x + dx, y + dy, z + dz)
   }
 
   final case class Circle(x: Double, y: Double, radius: Double) extends Shape2D {
@@ -84,7 +82,7 @@ object ClassesAndTraits extends App {
     override def minY: Double = y - radius
     override def maxY: Double = y + radius
     override def area: Double = (Math.PI * Math.pow(radius, 2)).round
-    override def move(dx: Double, dy: Double): Circle = Circle(x + dx, y + dy, radius)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Circle = Circle(x + dx, y + dy, radius)
   }
 
   final case class Sphere(x: Double, y: Double, z: Double, radius: Double) extends Shape3D {
@@ -96,7 +94,7 @@ object ClassesAndTraits extends App {
     override def maxZ: Double = z + radius
     override def surfaceArea: Double = 4.0 * Math.PI * Math.pow(radius, 2).round
     override def volume: Double = (4.0 / 3.0) * (Math.PI * Math.pow(radius, 3)).round
-    override def move(dx: Double, dy: Double, dz: Double): Sphere = Sphere(x + dx, y + dy, z + dz, radius)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Sphere = Sphere(x + dx, y + dy, z + dz, radius)
   }
 
   final case class Rectangle(x: Double, y: Double, length: Double, height: Double) extends Shape2D {
@@ -105,7 +103,7 @@ object ClassesAndTraits extends App {
     override def minY: Double = y - height / 2
     override def maxY: Double = y + height / 2
     override def area: Double = length * height
-    override def move(dx: Double, dy: Double): Rectangle = Rectangle(x + dx, y + dy, length, height)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Rectangle = Rectangle(x + dx, y + dy, length, height)
   }
 
   final case class Cuboid(x: Double, y: Double, z: Double, length: Double, height: Double, width: Double) extends Shape3D {
@@ -117,7 +115,7 @@ object ClassesAndTraits extends App {
     override def maxZ: Double = z + width / 2
     override def surfaceArea: Double = 2.0 * (length * height + length * width + height * width)
     override def volume: Double = length * height * width
-    override def move(dx: Double, dy: Double, dz: Double): Cuboid = Cuboid(x + dx, y + dy, z + dz, length, height, width)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Cuboid = Cuboid(x + dx, y + dy, z + dz, length, height, width)
   }
 
   final case class Square(x: Double, y: Double, side: Double) extends Shape2D {
@@ -126,7 +124,7 @@ object ClassesAndTraits extends App {
     override def minY: Double = y - side / 2
     override def maxY: Double = y + side / 2
     override def area: Double = Math.pow(side, 2)
-    override def move(dx: Double, dy: Double): Square = Square(x + dx, y + dy, side)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Square = Square(x + dx, y + dy, side)
   }
 
   final case class Cube(x: Double, y: Double, z: Double, edge: Double) extends Shape3D {
@@ -152,16 +150,18 @@ object ClassesAndTraits extends App {
     override def minY: Double = vertices.map(_.y).min
     override def maxY: Double = vertices.map(_.y).max
     override def area: Double = 0.5 * (v1.x * (v2.y - v3.y) + v2.x * (v3.y - v1.y) + v3.x * (v1.y - v2.y))
-    override def move(dx: Double, dy: Double): Triangle = Triangle(v1.move(dx, dy), v2.move(dx, dy), v3.move(dx, dy))
+    override def move(dx: Double, dy: Double, dz: Double = 0): Triangle = {
+      Triangle(v1.move(dx, dy), v2.move(dx, dy), v3.move(dx, dy))
+    }
   }
 
-  final case class Pyramid(v1: Point3D, v2: Point3D, v3: Point3D, v4: Point3D) extends Shape3D {
+  final case class Tetrahedron(v1: Point3D, v2: Point3D, v3: Point3D, v4: Point3D) extends Shape3D {
     implicit val doubleOrdering: Ordering[Double] = Ordering.Double.IeeeOrdering
 
-    val vertices: List[Point3D] = v1 :: v2 :: v3 :: Nil
-    override def x: Double = vertices.map(_.x).sum / 3
-    override def y: Double = vertices.map(_.y).sum / 3
-    override def z: Double = vertices.map(_.z).sum / 3
+    val vertices: List[Point3D] = v1 :: v2 :: v3 :: v4 :: Nil
+    override def x: Double = ???
+    override def y: Double = ???
+    override def z: Double = ???
     override def minX: Double = vertices.map(_.x).min
     override def maxX: Double = vertices.map(_.x).max
     override def minY: Double = vertices.map(_.y).min
@@ -170,7 +170,9 @@ object ClassesAndTraits extends App {
     override def maxZ: Double = vertices.map(_.z).max
     override def surfaceArea: Double = ???
     override def volume: Double = ???
-    override def move(dx: Double, dy: Double, dz: Double): Pyramid = ???
+    override def move(dx: Double, dy: Double, dz: Double = 0): Shape = {
+      Tetrahedron(v1.move(dx, dy, dz), v2.move(dx, dy, dz), v3.move(dx, dy, dz), v4.move(dx, dy, dz))
+    }
   }
 
   def minimumBoundingRectangle(objects: Set[Bounded2D]): Rectangle = {
