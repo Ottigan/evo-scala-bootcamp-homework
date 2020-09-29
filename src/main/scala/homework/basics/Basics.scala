@@ -21,7 +21,7 @@ object Basics extends App {
     if (a == 0 && b == 0) 0
     else if (a == 0) Math.abs(b)
     else if (b == 0) Math.abs(a)
-    else if (Math.abs(a) >= Math.abs(b)) helper(b)
-    else helper(a)
+    else if (Math.abs(a) >= Math.abs(b)) helper(Math.abs(b))
+    else helper(Math.abs(a))
   }
 }

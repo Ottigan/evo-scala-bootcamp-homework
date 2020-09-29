@@ -119,7 +119,8 @@ object ClassesAndTraits extends App {
     override def minY: Double = y - height / 2
     override def maxY: Double = y + height / 2
     override def area: Double = length * height
-    override def move(dx: Double, dy: Double, dz: Double = 0): Rectangle = Rectangle(x + dx, y + dy, length, height)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Rectangle =
+      Rectangle(x + dx, y + dy, length, height)
   }
 
   final case class Cuboid(x: Double, y: Double, z: Double, length: Double, height: Double, width: Double) extends Shape3D {
@@ -131,7 +132,8 @@ object ClassesAndTraits extends App {
     override def maxZ: Double = z + width / 2
     override def surfaceArea: Double = 2.0 * (length * height + length * width + height * width)
     override def volume: Double = length * height * width
-    override def move(dx: Double, dy: Double, dz: Double = 0): Cuboid = Cuboid(x + dx, y + dy, z + dz, length, height, width)
+    override def move(dx: Double, dy: Double, dz: Double = 0): Cuboid =
+      Cuboid(x + dx, y + dy, z + dz, length, height, width)
   }
 
   final case class Square(x: Double, y: Double, side: Double) extends Shape2D {
