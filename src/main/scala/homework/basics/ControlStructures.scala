@@ -45,18 +45,18 @@ object ControlStructures {
     }
 
     final case class Average(numbers: List[Double]) extends Command {
-      def outcome: Double = ???
-      def result: Result = ???
+      def outcome: Double = numbers.sum / numbers.size
+      def result: Result = Result.Average(numbers, outcome)
     }
 
     final case class Min(numbers: List[Double]) extends Command {
-      def outcome: Double = ???
-      def result: Result = ???
+      def outcome: Double = numbers.min
+      def result: Result = Result.Min(numbers, outcome)
     }
 
     final case class Max(numbers: List[Double]) extends Command {
-      def outcome: Double = ???
-      def result: Result = ???
+      def outcome: Double = numbers.max
+      def result: Result = Result.Max(numbers, outcome)
     }
   }
 
@@ -80,19 +80,31 @@ object ControlStructures {
       def result: String = s"$prefix ${listToString}is $outcome"
     }
 
-    final case class Average(dividend: Double, divisor: Double) extends Result {
-      val prefix: String = ???
-      def result: String = ???
+    final case class Average(numbers: List[Double], outcome: Double) extends Result {
+      val prefix: String = "the average of"
+      val listToString: String = numbers.foldLeft("")((acc, x) => {
+        if (x % 1 == 0) acc + s"${x.toInt} "
+        else acc + s"$x "
+      })
+      def result: String = s"$prefix ${listToString}is $outcome"
     }
 
-    final case class Min(dividend: Double, divisor: Double) extends Result {
-      val prefix: String = ???
-      def result: String = ???
+    final case class Min(numbers: List[Double], outcome: Double) extends Result {
+      val prefix: String = "the minimum of"
+      val listToString: String = numbers.foldLeft("")((acc, x) => {
+        if (x % 1 == 0) acc + s"${x.toInt} "
+        else acc + s"$x "
+      })
+      def result: String = s"$prefix ${listToString}is $outcome"
     }
 
-    final case class Max(dividend: Double, divisor: Double) extends Result {
-      val prefix: String = ???
-      def result: String = ???
+    final case class Max(numbers: List[Double], outcome: Double) extends Result {
+      val prefix: String = "the maximum of"
+      val listToString: String = numbers.foldLeft("")((acc, x) => {
+        if (x % 1 == 0) acc + s"${x.toInt} "
+        else acc + s"$x "
+      })
+      def result: String = s"$prefix ${listToString}is $outcome"
     }
   }
 
@@ -121,16 +133,22 @@ object ControlStructures {
   // invalid operations
   def calculate(x: Command): Either[ErrorMessage, Result] = {
     x match {
-      case divide: Command.Divide => Right(divide.result)
-      case sum: Command.Sum       => Right(sum.result)
-      case _                      => Left(ErrorMessage("Error: derp"))
+      case divide: Command.Divide   => Right(divide.result)
+      case sum: Command.Sum         => Right(sum.result)
+      case average: Command.Average => Right(average.result)
+      case min: Command.Min         => Right(min.result)
+      case max: Command.Max         => Right(max.result)
+      case _                        => Left(ErrorMessage("Error: derp"))
     }
   }
 
   def renderResult(x: Result): String = {
     x match {
-      case divide: Result.Divide => divide.result
-      case sum: Result.Sum       => sum.result
+      case divide: Result.Divide   => divide.result
+      case sum: Result.Sum         => sum.result
+      case average: Result.Average => average.result
+      case min: Result.Min         => min.result
+      case max: Result.Max         => max.result
     }
   }
 
