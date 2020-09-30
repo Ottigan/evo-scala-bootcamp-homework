@@ -209,10 +209,10 @@ object ClassesAndTraits extends App {
   }
 
   def describe(x: Shape2D): String = x match {
-    case Point2D(x, y) => s"Point(x = $x, y = $y)"
-    case Circle(x, y, radius) => s"Circle(centerX = $x, centerY = $y, radius = $radius)"
+    case Point2D(x, y)                   => s"Point(x = $x, y = $y)"
+    case Circle(x, y, radius)            => s"Circle(centerX = $x, centerY = $y, radius = $radius)"
     case Rectangle(x, y, length, height) => s"Rectangle(centerX = $x, centerY = $y, length = $length, height = $height)"
-    case Square(x, y, side) => s"Square(centerX = $x, centerY = $y, sides = $side)"
-    case Triangle(v1, v2, v3) => s"Triangle(vertex#1 = $v1, vertex#2 = $v2, vertex#3 = $v3)"
+    case Square(x, y, side)              => s"Square(centerX = $x, centerY = $y, sides = $side)"
+    case Triangle(v1, v2, v3)            => s"Triangle(vertex#1 = $v1, vertex#2 = $v2, vertex#3 = $v3)"
   }
 }
