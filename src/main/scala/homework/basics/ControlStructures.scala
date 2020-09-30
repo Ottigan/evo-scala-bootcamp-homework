@@ -32,23 +32,28 @@ object ControlStructures {
     def outcome: Double
     def result: Result
   }
+
   object Command {
     final case class Divide(dividend: Double, divisor: Double) extends Command {
-      def outcome: Double = ???
-      def result: Result = ???
+      def outcome: Double = dividend / divisor
+      def result: Result = Result.Divide(dividend, divisor, outcome)
     }
+
     final case class Sum(numbers: List[Double]) extends Command {
       def outcome: Double = numbers.sum
       def result: Result = Result.Sum(numbers, outcome)
     }
+
     final case class Average(numbers: List[Double]) extends Command {
       def outcome: Double = ???
       def result: Result = ???
     }
+
     final case class Min(numbers: List[Double]) extends Command {
       def outcome: Double = ???
       def result: Result = ???
     }
+
     final case class Max(numbers: List[Double]) extends Command {
       def outcome: Double = ???
       def result: Result = ???
@@ -57,9 +62,15 @@ object ControlStructures {
 
   final case class ErrorMessage(value: String)
 
-  sealed trait Result
+  sealed trait Result {
+    def result: String
+  }
+
   object Result {
-    final case class Divide(dividend: Double, divisor: Double) extends Result
+    final case class Divide(dividend: Double, divisor: Double, outcome: Double) extends Result {
+      def result: String = f"$dividend%.0f divided by $divisor%.0f is $outcome"
+    }
+
     final case class Sum(numbers: List[Double], outcome: Double) extends Result {
       val prefix = "the sum of"
       val listToString: String = numbers.foldLeft("")((acc, x) => {
@@ -68,19 +79,35 @@ object ControlStructures {
       })
       def result: String = s"$prefix ${listToString}is $outcome"
     }
-    final case class Average(dividend: Double, divisor: Double) extends Result
-    final case class Min(dividend: Double, divisor: Double) extends Result
-    final case class Max(dividend: Double, divisor: Double) extends Result
+
+    final case class Average(dividend: Double, divisor: Double) extends Result {
+      val prefix: String = ???
+      def result: String = ???
+    }
+
+    final case class Min(dividend: Double, divisor: Double) extends Result {
+      val prefix: String = ???
+      def result: String = ???
+    }
+
+    final case class Max(dividend: Double, divisor: Double) extends Result {
+      val prefix: String = ???
+      def result: String = ???
+    }
   }
 
   def parseCommand(x: String): Either[ErrorMessage, Command] = {
-    val list: List[String] = x.split(" ").toList
+    val list: Array[String] = x.split(" ")
     val command: String = list.head
-    val numbers: List[Double] = list.tail.map(_.toDouble)
+    val numbers: List[Double] = list.toList.tail.map(_.toDouble)
 
     command match {
-      case "sum" => Right(Command.Sum(numbers))
-      case _     => Left(ErrorMessage("Error: Unsupported/Missing Command"))
+      case "divide"  => Right(Command.Divide(list(1).toDouble, list(2).toDouble))
+      case "sum"     => Right(Command.Sum(numbers))
+      case "average" => Right(Command.Average(numbers))
+      case "min"     => Right(Command.Min(numbers))
+      case "max"     => Right(Command.Max(numbers))
+      case _         => Left(ErrorMessage("Error: Unsupported/Missing Command"))
     }
 
     // Implementation hints:
@@ -94,14 +121,16 @@ object ControlStructures {
   // invalid operations
   def calculate(x: Command): Either[ErrorMessage, Result] = {
     x match {
-      case sum: Command.Sum => Right(sum.result)
-      case _                => Left(ErrorMessage("Error: derp"))
+      case divide: Command.Divide => Right(divide.result)
+      case sum: Command.Sum       => Right(sum.result)
+      case _                      => Left(ErrorMessage("Error: derp"))
     }
   }
 
   def renderResult(x: Result): String = {
     x match {
-      case sum: Result.Sum => sum.result
+      case divide: Result.Divide => divide.result
+      case sum: Result.Sum       => sum.result
     }
   }
 
@@ -117,8 +146,8 @@ object ControlStructures {
     } yield renderResult(result)
 
     result match {
-      case Left(x)  => s"${x.value}"
-      case Right(x) => s"$x"
+      case Left(e)  => e.value
+      case Right(x) => x
     }
   }
 
