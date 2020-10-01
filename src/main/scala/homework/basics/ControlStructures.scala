@@ -60,7 +60,9 @@ object ControlStructures {
     }
   }
 
-  final case class ErrorMessage(value: String)
+  final case class ErrorMessage(value: String) {
+    val msg: String = s"Error: $value"
+  }
 
   sealed trait Result {
     def result: String
@@ -72,7 +74,7 @@ object ControlStructures {
     }
 
     final case class Sum(numbers: List[Double], outcome: Double) extends Result {
-      val prefix = "the sum of"
+      val prefix: String = "the sum of"
       val listToString: String = numbers.foldLeft("")((acc, x) => {
         if (x % 1 == 0) acc + s"${x.toInt} "
         else acc + s"$x "
@@ -109,17 +111,15 @@ object ControlStructures {
   }
 
   def parseCommand(x: String): Either[ErrorMessage, Command] = {
-    val list: Array[String] = x.split(" ")
-    val command: String = list.head
-    val numbers: List[Double] = list.toList.tail.map(_.toDouble)
+    val list: List[String] = x.trim.replaceAll("\\s+", " ").split(" ").toList
 
-    command match {
-      case "divide"  => Right(Command.Divide(list(1).toDouble, list(2).toDouble))
-      case "sum"     => Right(Command.Sum(numbers))
-      case "average" => Right(Command.Average(numbers))
-      case "min"     => Right(Command.Min(numbers))
-      case "max"     => Right(Command.Max(numbers))
-      case _         => Left(ErrorMessage("Error: Unsupported/Missing Command"))
+    list match {
+      case x :: y :: z :: Nil if x == "divide" => Right(Command.Divide(y.toDouble, z.toDouble))
+      case x :: xs if x == "sum"               => Right(Command.Sum(xs.map(_.toDouble)))
+      case x :: xs if x == "average"           => Right(Command.Average(xs.map(_.toDouble)))
+      case x :: xs if x == "min"               => Right(Command.Min(xs.map(_.toDouble)))
+      case x :: xs if x == "max"               => Right(Command.Max(xs.map(_.toDouble)))
+      case _                                   => Left(ErrorMessage("Unsupported/Missing Command"))
     }
 
     // Implementation hints:
@@ -132,23 +132,27 @@ object ControlStructures {
   // should return an error (using `Left` channel) in case of division by zero and other
   // invalid operations
   def calculate(x: Command): Either[ErrorMessage, Result] = {
+    import Command._
+
     x match {
-      case divide: Command.Divide   => Right(divide.result)
-      case sum: Command.Sum         => Right(sum.result)
-      case average: Command.Average => Right(average.result)
-      case min: Command.Min         => Right(min.result)
-      case max: Command.Max         => Right(max.result)
-      case _                        => Left(ErrorMessage("Error: derp"))
+      case x: Divide  => Right(x.result)
+      case x: Sum     => Right(x.result)
+      case x: Average => Right(x.result)
+      case x: Min     => Right(x.result)
+      case x: Max     => Right(x.result)
+      case _          => Left(ErrorMessage("Calculate Placeholder"))
     }
   }
 
   def renderResult(x: Result): String = {
+    import Result._
+
     x match {
-      case divide: Result.Divide   => divide.result
-      case sum: Result.Sum         => sum.result
-      case average: Result.Average => average.result
-      case min: Result.Min         => min.result
-      case max: Result.Max         => max.result
+      case divide: Divide   => divide.result
+      case sum: Sum         => sum.result
+      case average: Average => average.result
+      case min: Min         => min.result
+      case max: Max         => max.result
     }
   }
 
@@ -164,7 +168,7 @@ object ControlStructures {
     } yield renderResult(result)
 
     result match {
-      case Left(e)  => e.value
+      case Left(e)  => e.msg
       case Right(x) => x
     }
   }
