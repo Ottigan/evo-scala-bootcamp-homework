@@ -82,7 +82,7 @@ object ControlStructures {
     final case class Divide(dividend: Double, divisor: Double, outcome: Double) extends Result {
       val prefix = " divided by "
       val numbers = List(dividend, divisor)
-      override def result = f"${super.inputToString.replace(" ", prefix)} is $outcomeWithoutZeros"
+      override def result = f"${super.inputToString.replace(" ", prefix)} is ${super.outcomeWithoutZeros}"
     }
 
     final case class Sum(numbers: List[Double], outcome: Double) extends Result {
