@@ -65,48 +65,40 @@ object ControlStructures {
   }
 
   sealed trait Result {
-    def result: String
+    val prefix: String
+    val numbers: List[Double]
+    val outcome: Double
+    def outcomeWithoutZeros: String = outcome.toString.replaceAll("[0]*$", "")
+    def inputToString: String = numbers
+      .foldLeft("")((acc, x) => {
+        if (x % 1 == 0) acc + s"${x.toInt} "
+        else acc + s"$x "
+      })
+      .trim
+    def result: String = s"$prefix $inputToString is $outcomeWithoutZeros"
   }
 
   object Result {
     final case class Divide(dividend: Double, divisor: Double, outcome: Double) extends Result {
-      def result: String = f"$dividend%.0f divided by $divisor%.0f is $outcome"
+      val prefix = " divided by "
+      val numbers = List(dividend, divisor)
+      override def result = f"${super.inputToString.replace(" ", prefix)} is $outcomeWithoutZeros"
     }
 
     final case class Sum(numbers: List[Double], outcome: Double) extends Result {
-      val prefix: String = "the sum of"
-      val listToString: String = numbers.foldLeft("")((acc, x) => {
-        if (x % 1 == 0) acc + s"${x.toInt} "
-        else acc + s"$x "
-      })
-      def result: String = s"$prefix ${listToString}is $outcome"
+      val prefix = "the sum of"
     }
 
     final case class Average(numbers: List[Double], outcome: Double) extends Result {
-      val prefix: String = "the average of"
-      val listToString: String = numbers.foldLeft("")((acc, x) => {
-        if (x % 1 == 0) acc + s"${x.toInt} "
-        else acc + s"$x "
-      })
-      def result: String = s"$prefix ${listToString}is $outcome"
+      val prefix = "the average of"
     }
 
     final case class Min(numbers: List[Double], outcome: Double) extends Result {
-      val prefix: String = "the minimum of"
-      val listToString: String = numbers.foldLeft("")((acc, x) => {
-        if (x % 1 == 0) acc + s"${x.toInt} "
-        else acc + s"$x "
-      })
-      def result: String = s"$prefix ${listToString}is $outcome"
+      val prefix = "the minimum of"
     }
 
     final case class Max(numbers: List[Double], outcome: Double) extends Result {
-      val prefix: String = "the maximum of"
-      val listToString: String = numbers.foldLeft("")((acc, x) => {
-        if (x % 1 == 0) acc + s"${x.toInt} "
-        else acc + s"$x "
-      })
-      def result: String = s"$prefix ${listToString}is $outcome"
+      val prefix = "the maximum of"
     }
   }
 
