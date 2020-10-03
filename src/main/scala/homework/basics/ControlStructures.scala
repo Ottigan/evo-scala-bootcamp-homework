@@ -1,6 +1,7 @@
 package homework.basics
 
 import scala.io.Source
+import scala.util.{Failure, Success, Try}
 
 object ControlStructures {
   // Homework
@@ -29,34 +30,41 @@ object ControlStructures {
   // output a single line starting with "Error: "
 
   sealed trait Command {
-    def outcome: Double
+    val outcome: Try[Double]
     def result: Result
   }
 
   object Command {
     final case class Divide(dividend: Double, divisor: Double) extends Command {
-      def outcome: Double = dividend / divisor
-      def result: Result = Result.Divide(dividend, divisor, outcome)
+      val outcome: Try[Double] = Try(
+        // Casting to Int for expression to produce a Failure
+        // Considering in case of Double it produces Success(Infinity)
+        if (divisor == 0) dividend.toInt / divisor.toInt
+        // Otherwise sticking with Double for decimal precision
+        else dividend / divisor
+      )
+      def result: Result = Result.Divide(dividend, divisor, outcome.get)
+
     }
 
     final case class Sum(numbers: List[Double]) extends Command {
-      def outcome: Double = numbers.sum
-      def result: Result = Result.Sum(numbers, outcome)
+      val outcome: Try[Double] = Try(numbers.sum)
+      def result: Result = Result.Sum(numbers, outcome.get)
     }
 
     final case class Average(numbers: List[Double]) extends Command {
-      def outcome: Double = numbers.sum / numbers.size
-      def result: Result = Result.Average(numbers, outcome)
+      val outcome: Try[Double] = Try(numbers.sum / numbers.size)
+      def result: Result = Result.Average(numbers, outcome.get)
     }
 
     final case class Min(numbers: List[Double]) extends Command {
-      def outcome: Double = numbers.min
-      def result: Result = Result.Min(numbers, outcome)
+      val outcome: Try[Double] = Try(numbers.min)
+      def result: Result = Result.Min(numbers, outcome.get)
     }
 
     final case class Max(numbers: List[Double]) extends Command {
-      def outcome: Double = numbers.max
-      def result: Result = Result.Max(numbers, outcome)
+      val outcome: Try[Double] = Try(numbers.max)
+      def result: Result = Result.Max(numbers, outcome.get)
     }
   }
 
@@ -68,7 +76,7 @@ object ControlStructures {
     val prefix: String
     val numbers: List[Double]
     val outcome: Double
-    def outcomeWithoutZeros: String = outcome.toString.replaceAll("[0]*$", "")
+    def outcomeWithoutZeros: String = outcome.toString.replaceAll("[.][0]*$", "")
     def inputToString: String = numbers
       .foldLeft("")((acc, x) => {
         if (x % 1 == 0) acc + s"${x.toInt} "
@@ -102,66 +110,63 @@ object ControlStructures {
     }
   }
 
-  def parseCommand(x: String): Either[ErrorMessage, Command] = {
-    val list: List[String] = x.trim.replaceAll("\\s+", " ").split(" ").toList
+  def parseCommand(line: String): Either[ErrorMessage, Command] = {
+    import Command._
+    // Solving extra whitespace
+    val list: List[String] = line.trim.replaceAll("\\s+", " ").split(" ").toList
 
-    list match {
-      case x :: y :: z :: Nil if x == "divide" => Right(Command.Divide(y.toDouble, z.toDouble))
-      case x :: xs if x == "sum"               => Right(Command.Sum(xs.map(_.toDouble)))
-      case x :: xs if x == "average"           => Right(Command.Average(xs.map(_.toDouble)))
-      case x :: xs if x == "min"               => Right(Command.Min(xs.map(_.toDouble)))
-      case x :: xs if x == "max"               => Right(Command.Max(xs.map(_.toDouble)))
-      case _                                   => Left(ErrorMessage("Unsupported/Missing Command"))
+    // Could have written just .head
+    // Considering Java#split, even on an empty String will always produce an Array("")
+    // thus existence of "head" is guaranteed
+    val command: String = list.headOption.getOrElse("none").toLowerCase
+
+    val numbers: Try[List[Double]] = Try(list.tail.map(_.toDouble))
+
+    numbers match {
+      case Failure(e)                                    => Left(ErrorMessage(e.toString))
+      case Success(x :: y :: Nil) if command == "divide" => Right(Divide(x, y))
+      case Success(x) if x.nonEmpty                      =>
+        command match {
+          case "sum"     => Right(Sum(x))
+          case "average" => Right(Average(x))
+          case "min"     => Right(Min(x))
+          case "max"     => Right(Max(x))
+          case _         => Left(ErrorMessage("Incorrect Command or use of it"))
+        }
+      // Handling _.toDouble on an empty List producing Success(x) where x.isEmpty
+      case _                                             => Left(ErrorMessage("Expression was too short"))
     }
-
-    // Implementation hints:
-    // You can use String#split, convert to List using .toList, then pattern match on:
-    //   case x :: xs => ???
-
-    // Consider how to handle extra whitespace gracefully (without errors).
   }
 
   // should return an error (using `Left` channel) in case of division by zero and other
   // invalid operations
   def calculate(x: Command): Either[ErrorMessage, Result] = {
-    import Command._
-
-    x match {
-      case x: Divide  => Right(x.result)
-      case x: Sum     => Right(x.result)
-      case x: Average => Right(x.result)
-      case x: Min     => Right(x.result)
-      case x: Max     => Right(x.result)
-      case _          => Left(ErrorMessage("Calculate Placeholder"))
+    // Checking if calculation was successful
+    x.outcome match {
+      case Success(_) => Right(x.result)
+      case Failure(e) => Left(ErrorMessage(e.toString))
     }
   }
 
   def renderResult(x: Result): String = {
-    import Result._
 
-    x match {
-      case divide: Divide   => divide.result
-      case sum: Sum         => sum.result
-      case average: Average => average.result
-      case min: Min         => min.result
-      case max: Max         => max.result
-    }
+    x.result
   }
 
-  def process(x: String): String = {
+  def process(line: String): String = {
     import cats.implicits._
     // the import above will enable useful operations on Either-s such as `leftMap`
     // (map over the Left channel) and `merge` (convert `Either[A, A]` into `A`),
     // but you can also avoid using them using pattern matching.
 
     val result = for {
-      comm   <- parseCommand(x)
-      result <- calculate(comm)
+      command <- parseCommand(line)
+      result  <- calculate(command)
     } yield renderResult(result)
 
     result match {
-      case Left(e)  => e.msg
-      case Right(x) => x
+      case Left(error)   => error.msg
+      case Right(result) => result
     }
   }
 
