@@ -76,13 +76,13 @@ object ControlStructures {
     val prefix: String
     val numbers: List[Double]
     val outcome: Double
+    // In case the produced outcome of type Double ends with e.g. ".0000"
+    // Removed the trailing zeros and the decimal delimiter
     def outcomeWithoutZeros: String = outcome.toString.replaceAll("[.][0]*$", "")
-    def inputToString: String = numbers
-      .foldLeft("")((acc, x) => {
-        if (x % 1 == 0) acc + s"${x.toInt} "
-        else acc + s"$x "
-      })
-      .trim
+    def inputToString: String = numbers.foldLeft("")((acc, x) => {
+      if (x % 1 == 0) acc + s"${x.toInt} "
+      else acc + s"$x "
+    }).trim
     def result: String = s"$prefix $inputToString is $outcomeWithoutZeros"
   }
 
@@ -90,7 +90,7 @@ object ControlStructures {
     final case class Divide(dividend: Double, divisor: Double, outcome: Double) extends Result {
       val prefix = " divided by "
       val numbers = List(dividend, divisor)
-      override def result = f"${super.inputToString.replace(" ", prefix)} is ${super.outcomeWithoutZeros}"
+      override def result = s"${super.inputToString.replace(" ", prefix)} is ${super.outcomeWithoutZeros}"
     }
 
     final case class Sum(numbers: List[Double], outcome: Double) extends Result {
@@ -148,17 +148,9 @@ object ControlStructures {
     }
   }
 
-  def renderResult(x: Result): String = {
-
-    x.result
-  }
+  def renderResult(x: Result): String = x.result
 
   def process(line: String): String = {
-    import cats.implicits._
-    // the import above will enable useful operations on Either-s such as `leftMap`
-    // (map over the Left channel) and `merge` (convert `Either[A, A]` into `A`),
-    // but you can also avoid using them using pattern matching.
-
     val result = for {
       command <- parseCommand(line)
       result  <- calculate(command)
