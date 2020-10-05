@@ -21,9 +21,9 @@ object DataStructures {
       case (_, value) =>
         value
     }.map {
-      case (_, groupedMap) => (
+      case (value, groupedMap) => (
           groupedMap.keySet,
-          groupedMap.values.min
+          value
         )
     }.toList.sortBy {
       case (_, value) =>
