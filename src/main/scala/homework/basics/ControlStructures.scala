@@ -49,11 +49,29 @@ object ControlStructures {
 
     // Solving extra whitespace
     val list: List[String] = line.trim.replaceAll("\\s+", " ").split(" ").toList
-    val numbers: List[Option[Double]] = list.tail.map(x => x.toDoubleOption)
+
+    val numbers: List[Either[String, Double]] = list.tail.map(x =>
+      x.toDoubleOption match {
+        case Some(y) => Right(y)
+        case None    => Left(x)
+      }
+    )
+    def leftNumbers: List[String] = numbers.collect {
+      case Left(x) => x
+    }
+    def rightNumbers: List[Double] = numbers.collect {
+      case Right(x) => x
+    }
+
+    val supportedCommands: List[String] = List("divide", "sum", "average", "min", "max")
 
     (list.headOption, numbers) match {
-      case (Some(x), y) if !y.contains(None) && y.nonEmpty =>
-        (x.toLowerCase, y.flatten) match {
+      case (Some(x), _) if !supportedCommands.contains(x.toLowerCase) => Left(ErrorMessage("Missing/Unsupported Command"))
+      case (_, y) if y.isEmpty                                        => Left(ErrorMessage("Numbers were not provided"))
+      case (_, _) if leftNumbers.nonEmpty                             =>
+        Left(ErrorMessage(s"Numbers required, incorrect format: ${leftNumbers.mkString(" ")}"))
+      case (Some(x), _)                                               =>
+        (x.toLowerCase, rightNumbers) match {
           case ("divide", y)  => y match {
               case x :: xs :: Nil => Right(Divide(x, xs))
               case _              => Left(ErrorMessage("2 numbers expected"))
@@ -62,10 +80,7 @@ object ControlStructures {
           case ("average", y) => Right(Average(y))
           case ("min", y)     => Right(Min(y))
           case ("max", y)     => Right(Max(y))
-          case _              => Left(ErrorMessage("Unsupported Command"))
         }
-      case (_, y) if y.contains(None)                      => Left(ErrorMessage("Numbers were not provided"))
-      case (_, _)                                          => Left(ErrorMessage("Too few arguments"))
     }
   }
 
@@ -94,7 +109,7 @@ object ControlStructures {
     def withoutTrailingZeros(number: Double): String = number.toString.replaceAll("[.]?[0]*$", "")
 
     def numbersToString(numbers: List[Double]): String = {
-      numbers.foldLeft("")((acc, x) => acc + " " + withoutTrailingZeros(x)).trim
+      numbers.map(withoutTrailingZeros).mkString(" ")
     }
 
     x.command match {
