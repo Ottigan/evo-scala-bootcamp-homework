@@ -39,10 +39,10 @@ object ControlStructures {
   }
 
   final case class ErrorMessage(value: String) {
-    val msg: String = s"Error: $value"
+    override def toString: String = s"Error: $value"
   }
 
-  sealed case class Result(command: Command, result: Double)
+  final case class Result(command: Command, result: Double)
 
   def parseCommand(line: String): Either[ErrorMessage, Command] = {
     import Command._
@@ -129,7 +129,7 @@ object ControlStructures {
     } yield renderResult(result)
 
     result match {
-      case Left(error)   => error.msg
+      case Left(error)   => s"$error"
       case Right(result) => result
     }
   }
