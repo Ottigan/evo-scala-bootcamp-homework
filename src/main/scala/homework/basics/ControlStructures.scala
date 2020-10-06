@@ -1,7 +1,6 @@
 package homework.basics
 
 import scala.io.Source
-import scala.util.{Failure, Success, Try}
 
 object ControlStructures {
   // Homework
@@ -29,126 +28,84 @@ object ControlStructures {
   // In case of commands that cannot be parsed or calculations that cannot be performed,
   // output a single line starting with "Error: "
 
-  sealed trait Command {
-    val outcome: Try[Double]
-    def result: Result
-  }
+  sealed trait Command
 
   object Command {
-    final case class Divide(dividend: Double, divisor: Double) extends Command {
-      val outcome: Try[Double] = Try(
-        // Casting to Int for expression to produce a Failure
-        // Considering in case of Double it produces Success(Infinity)
-        if (divisor == 0) dividend.toInt / divisor.toInt
-        // Otherwise sticking with Double for decimal precision
-        else dividend / divisor
-      )
-      def result: Result = Result.Divide(dividend, divisor, outcome.get)
-
-    }
-
-    final case class Sum(numbers: List[Double]) extends Command {
-      val outcome: Try[Double] = Try(numbers.sum)
-      def result: Result = Result.Sum(numbers, outcome.get)
-    }
-
-    final case class Average(numbers: List[Double]) extends Command {
-      val outcome: Try[Double] = Try(numbers.sum / numbers.size)
-      def result: Result = Result.Average(numbers, outcome.get)
-    }
-
-    final case class Min(numbers: List[Double]) extends Command {
-      val outcome: Try[Double] = Try(numbers.min)
-      def result: Result = Result.Min(numbers, outcome.get)
-    }
-
-    final case class Max(numbers: List[Double]) extends Command {
-      val outcome: Try[Double] = Try(numbers.max)
-      def result: Result = Result.Max(numbers, outcome.get)
-    }
+    final case class Divide(dividend: Double, divisor: Double) extends Command
+    final case class Sum(numbers: List[Double]) extends Command
+    final case class Average(numbers: List[Double]) extends Command
+    final case class Min(numbers: List[Double]) extends Command
+    final case class Max(numbers: List[Double]) extends Command
   }
 
   final case class ErrorMessage(value: String) {
     val msg: String = s"Error: $value"
   }
 
-  sealed trait Result {
-    val prefix: String
-    val numbers: List[Double]
-    val outcome: Double
-    // In case the produced outcome of type Double ends with e.g. ".0000"
-    // Removed the trailing zeros and the decimal delimiter
-    def outcomeWithoutZeros: String = outcome.toString.replaceAll("[.][0]*$", "")
-    def inputToString: String = numbers.foldLeft("")((acc, x) => {
-      if (x % 1 == 0) acc + s"${x.toInt} "
-      else acc + s"$x "
-    }).trim
-    def result: String = s"$prefix $inputToString is $outcomeWithoutZeros"
-  }
-
-  object Result {
-    final case class Divide(dividend: Double, divisor: Double, outcome: Double) extends Result {
-      val prefix = " divided by "
-      val numbers = List(dividend, divisor)
-      override def result = s"${super.inputToString.replace(" ", prefix)} is ${super.outcomeWithoutZeros}"
-    }
-
-    final case class Sum(numbers: List[Double], outcome: Double) extends Result {
-      val prefix = "the sum of"
-    }
-
-    final case class Average(numbers: List[Double], outcome: Double) extends Result {
-      val prefix = "the average of"
-    }
-
-    final case class Min(numbers: List[Double], outcome: Double) extends Result {
-      val prefix = "the minimum of"
-    }
-
-    final case class Max(numbers: List[Double], outcome: Double) extends Result {
-      val prefix = "the maximum of"
-    }
-  }
+  sealed case class Result(command: Command, result: Double)
 
   def parseCommand(line: String): Either[ErrorMessage, Command] = {
     import Command._
+
     // Solving extra whitespace
     val list: List[String] = line.trim.replaceAll("\\s+", " ").split(" ").toList
+    val numbers: List[Option[Double]] = list.tail.map(x => x.toDoubleOption)
 
-    // Could have written just .head
-    // Considering Java#split, even on an empty String will always produce an Array("")
-    // thus existence of "head" is guaranteed
-    val command: String = list.headOption.getOrElse("none").toLowerCase
-
-    val numbers: Try[List[Double]] = Try(list.tail.map(_.toDouble))
-
-    numbers match {
-      case Failure(e)                                    => Left(ErrorMessage(e.toString))
-      case Success(x :: y :: Nil) if command == "divide" => Right(Divide(x, y))
-      case Success(x) if x.nonEmpty                      =>
-        command match {
-          case "sum"     => Right(Sum(x))
-          case "average" => Right(Average(x))
-          case "min"     => Right(Min(x))
-          case "max"     => Right(Max(x))
-          case _         => Left(ErrorMessage("Incorrect Command or use of it"))
+    (list.headOption, numbers) match {
+      case (Some(x), y) if !y.contains(None) && y.nonEmpty =>
+        (x.toLowerCase, y.flatten) match {
+          case ("divide", y)  => y match {
+              case x :: xs :: Nil => Right(Divide(x, xs))
+              case _              => Left(ErrorMessage("2 numbers expected"))
+            }
+          case ("sum", y)     => Right(Sum(y))
+          case ("average", y) => Right(Average(y))
+          case ("min", y)     => Right(Min(y))
+          case ("max", y)     => Right(Max(y))
+          case _              => Left(ErrorMessage("Unsupported Command"))
         }
-      // Handling _.toDouble on an empty List producing Success(x) where x.isEmpty
-      case _                                             => Left(ErrorMessage("Expression was too short"))
+      case (_, y) if y.contains(None)                      => Left(ErrorMessage("Numbers were not provided"))
+      case (_, _)                                          => Left(ErrorMessage("Too few arguments"))
     }
   }
 
   // should return an error (using `Left` channel) in case of division by zero and other
   // invalid operations
   def calculate(x: Command): Either[ErrorMessage, Result] = {
-    // Checking if calculation was successful
-    x.outcome match {
-      case Success(_) => Right(x.result)
-      case Failure(e) => Left(ErrorMessage(e.toString))
+    import Command._
+
+    x match {
+      case Divide(dividend, divisor) =>
+        if (divisor != 0) Right(Result(x, dividend / divisor))
+        else Left(ErrorMessage("Division by zero is not allowed"))
+      case Sum(numbers)              => Right(Result(x, numbers.sum))
+      case Average(numbers)          => Right(Result(x, numbers.sum / numbers.length))
+      case Min(numbers)              => Right(Result(x, numbers.min))
+      case Max(numbers)              => Right(Result(x, numbers.max))
     }
   }
 
-  def renderResult(x: Result): String = x.result
+  def renderResult(x: Result): String = {
+    import Command._
+
+    val outcome = x.result
+
+    // Removing unneeded zeros after the decimal
+    def withoutTrailingZeros(number: Double): String = number.toString.replaceAll("[.]?[0]*$", "")
+
+    def numbersToString(numbers: List[Double]): String = {
+      numbers.foldLeft("")((acc, x) => acc + " " + withoutTrailingZeros(x)).trim
+    }
+
+    x.command match {
+      case Divide(dividend, divisor) =>
+        s"${withoutTrailingZeros(dividend)} divided by ${withoutTrailingZeros(divisor)} is ${withoutTrailingZeros(outcome)}"
+      case Sum(x)                    => s"the sum of ${numbersToString(x)} is ${withoutTrailingZeros(outcome)}"
+      case Average(x)                => s"the average of ${numbersToString(x)} is ${withoutTrailingZeros(outcome)}"
+      case Min(x)                    => s"the min of ${numbersToString(x)} is ${withoutTrailingZeros(outcome)}"
+      case Max(x)                    => s"the max of ${numbersToString(x)} is ${withoutTrailingZeros(outcome)}"
+    }
+  }
 
   def process(line: String): String = {
     val result = for {
