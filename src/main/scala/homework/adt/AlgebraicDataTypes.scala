@@ -18,38 +18,16 @@ object AlgebraicDataTypes extends App {
   // Alternative
   case class SuitAnyVal private (suit: String) extends AnyVal
   object SuitAnyVal {
-    def create(suit: String): Option[SuitAnyVal] = {
-      val lowerSuit = suit.toLowerCase
-
-      lowerSuit match {
-        case x @ "c" => Some(SuitAnyVal(x))
-        case x @ "d" => Some(SuitAnyVal(x))
-        case x @ "h" => Some(SuitAnyVal(x))
-        case x @ "s" => Some(SuitAnyVal(x))
-        case _       => None
-      }
+    def create(suit: String): Option[SuitAnyVal] = suit match {
+      case x @ "c" => Some(SuitAnyVal(x))
+      case x @ "d" => Some(SuitAnyVal(x))
+      case x @ "h" => Some(SuitAnyVal(x))
+      case x @ "s" => Some(SuitAnyVal(x))
+      case _       => None
     }
   }
 
   // 2. Rank
-  sealed trait Rank
-  object Rank {
-    case object Two extends Rank
-    case object Three extends Rank
-    case object Four extends Rank
-    case object Five extends Rank
-    case object Six extends Rank
-    case object Seven extends Rank
-    case object Eight extends Rank
-    case object Nine extends Rank
-    case object Ten extends Rank
-    case object Jack extends Rank
-    case object Queen extends Rank
-    case object King extends Rank
-    case object Ace extends Rank
-  }
-
-  // Alternative
   case class RankAnyVal private (rank: Int) extends AnyVal
   object RankAnyVal {
     def create(rank: Int): Option[RankAnyVal] = {
@@ -58,22 +36,63 @@ object AlgebraicDataTypes extends App {
     }
   }
 
+  // Alternative
+  sealed trait Rank {
+    val rank: Int
+  }
+  object Rank {
+    case object Two extends Rank {
+      val rank = 2
+    }
+    case object Three extends Rank {
+      val rank = 3
+    }
+    case object Four extends Rank {
+      val rank = 4
+    }
+    case object Five extends Rank {
+      val rank = 5
+    }
+    case object Six extends Rank {
+      val rank = 6
+    }
+    case object Seven extends Rank {
+      val rank = 7
+    }
+    case object Eight extends Rank {
+      val rank = 8
+    }
+    case object Nine extends Rank {
+      val rank = 9
+    }
+    case object Ten extends Rank {
+      val rank = 10
+    }
+    case object Jack extends Rank {
+      val rank = 11
+    }
+    case object Queen extends Rank {
+      val rank = 12
+    }
+    case object King extends Rank {
+      val rank = 13
+    }
+    case object Ace extends Rank {
+      val rank = 14
+    }
+  }
+
   // 3. Card
-  case class Card(rank: Rank, suit: Suit)
+  final case class Card(rank: Rank, suit: Suit)
 
-  import Rank._
-  import Suit._
-
-  val aceOfSpades: Card = Card(Ace, Spade)
-  val fiveOfDiamonds: Card = Card(Five, Diamond)
-  val tenOfClubs: Card = Card(Ten, Club)
-  val jackOfSpades: Card = Card(Jack, Spade)
-  val twoOfHearts: Card = Card(Two, Heart)
+  // Alternative
+  // Potentially could assist with the logic of creating valid Omaha combinations
+  final case class CardOmaha(rank: Rank, suit: Suit, isFromHand: Boolean)
 
   // 4. Hand (Texas or Omaha)
-  case class Hand private (cards: Set[Card], isOmaha: Boolean = False)
+  final case class Hand private (cards: Set[Card], isOmaha: Boolean = false)
   object Hand {
-    def create(cards: Set[Card], isOmaha: Boolean = False): Option[Hand] = cards.size match {
+    def create(cards: Set[Card], isOmaha: Boolean = false): Option[Hand] = cards.size match {
       case 2 if !isOmaha => Some(Hand(cards))
       case 4 if isOmaha  => Some(Hand(cards))
       case _             => None
@@ -81,7 +100,7 @@ object AlgebraicDataTypes extends App {
   }
 
   // 5. Board
-  case class Board private (cards: Set[Card])
+  final case class Board private (cards: Set[Card])
   object Board {
     def create(cards: Set[Card]): Option[Board] = {
       if (cards.size == 5) Some(Board(cards))
@@ -89,64 +108,51 @@ object AlgebraicDataTypes extends App {
     }
   }
 
-  // 6. Poker Combination (High Card, Pair, etc.)
-  sealed trait Combination
-  object Combination {
-    case class StraightFlush private (cards: Set[Card]) extends Combination
-    object StraightFlush {
-      def create(cards: Set[Card]): Option[StraightFlush] = ???
-    }
-
-    case class FourOfaKind private (cards: Set[Card]) extends Combination
-    object FourOfaKind {
-      def create(cards: Set[Card]): Option[FourOfaKind] = ???
-    }
-
-    case class FullHouse private (cards: Set[Card]) extends Combination
-    object FullHouse {
-      def create(cards: Set[Card]): Option[FullHouse] = ???
-    }
-
-    case class Flush private (cards: Set[Card]) extends Combination
-    object Flush {
-      def create(cards: Set[Card]): Option[Flush] = ???
-    }
-
-    case class Straight private (cards: Set[Card]) extends Combination
-    object Straight {
-      def create(cards: Set[Card]): Option[Straight] = ???
-    }
-
-    case class ThreeOfaKind private (cards: Set[Card]) extends Combination
-    object ThreeOfaKind {
-      def create(cards: Set[Card]): Option[ThreeOfaKind] = ???
-    }
-
-    case class TwoPair private (cards: Set[Card]) extends Combination
-    object TwoPair {
-      def create(cards: Set[Card]): Option[TwoPair] = ???
-    }
-
-    case class Pair private (cards: Set[Card]) extends Combination
-    object Pair {
-      def create(cards: Set[Card]): Option[Pair] = ???
-    }
-
-    case class HighCard private (cards: Set[Card])
-    object HighCard {
-      def create(cards: Set[Card]): Option[HighCard] = ???
-    }
-  }
-
-  // 7. Test Case (Board & Hands to rank)
-  case class TestInput private (board: Board, hand: Set[TexasHand])
+  // 6. Test Case (Board & Hands to rank)
+  final case class TestInput private (board: Board, hands: Set[Hand], isOmaha: Boolean = false)
   object TestInput {
-    def create(board: Board, hand: Set[TexasHand]): Option[TestInput] = ???
+    def create(board: Board, hands: Set[Hand], isOmaha: Boolean = false): Option[TestInput] = hands.size match {
+      case x if x > 0 && x < 24 && !isOmaha => Some(TestInput(board, hands))
+      case x if x > 0 && x < 12 && isOmaha  => Some(TestInput(board, hands, true))
+      case _                                => None
+    }
   }
 
-  // 8. Test Result (Hands ranked in a particular order for a particular Board, accounting for splits)
-  case class TestOutput private (hand: TexasHand*)
+  // 7. Poker Combination (High Card, Pair, etc.)
+  sealed trait Combination extends Any {
+    def cards: Set[Card]
+  }
+  object Combination {
+    case class StraightFlush private (cards: Set[Card]) extends AnyVal with Combination
+    case class FourOfAKind private (cards: Set[Card]) extends AnyVal with Combination
+    case class FullHouse private (cards: Set[Card]) extends AnyVal with Combination
+    case class Flush private (cards: Set[Card]) extends AnyVal with Combination
+    case class Straight private (cards: Set[Card]) extends AnyVal with Combination
+    case class ThreeOfAKind private (cards: Set[Card]) extends AnyVal with Combination
+    case class TwoPair private (cards: Set[Card]) extends AnyVal with Combination
+    case class Pair private (cards: Set[Card]) extends AnyVal with Combination
+    case class HighCard private (cards: Set[Card]) extends AnyVal with Combination
+  }
+
+  // 8. Hand plus it's best combination for comparisons
+  sealed abstract case class HandWithCombination private (hand: Hand, combination: Combination)
+  object HandWithCombination {
+    def create(hand: Hand, combination: Combination): Option[HandWithCombination] =
+      (hand.cards.size, combination.cards.size) match {
+        case (2, 5) if !hand.isOmaha => Some(new HandWithCombination(hand, combination) {})
+        case (4, 5) if hand.isOmaha  => Some(new HandWithCombination(hand, combination) {})
+        case _                       => None
+
+      }
+  }
+
+  // 9. Test Result (Hands ranked in a particular order for a particular Board, accounting for splits)
+  // If the nested Set contains more than one element then you would .mkString("=")
+  sealed abstract case class TestOutput private (rankedHands: Set[Set[Hand]])
   object TestOutput {
-    def create(hand: TexasHand*): Option[TestOutput] = ???
+    def create(rankedHands: Set[Set[Hand]]): Option[TestOutput] = {
+      if (rankedHands.forall(_.nonEmpty)) Some(new TestOutput(rankedHands) {})
+      else None
+    }
   }
 }
