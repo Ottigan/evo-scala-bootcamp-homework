@@ -66,7 +66,8 @@ object ControlStructures {
     val supportedCommands: List[String] = List("divide", "sum", "average", "min", "max")
 
     (list.headOption, numbers) match {
-      case (Some(x), _) if !supportedCommands.contains(x.toLowerCase) => Left(ErrorMessage("Missing/Unsupported Command"))
+      case (Some(x), _) if !supportedCommands.contains(x.toLowerCase) =>
+        Left(ErrorMessage("Missing/Unsupported Command"))
       case (_, y) if y.isEmpty                                        => Left(ErrorMessage("Numbers were not provided"))
       case (_, _) if leftNumbers.nonEmpty                             =>
         Left(ErrorMessage(s"Numbers required, incorrect format: ${leftNumbers.mkString(" ")}"))
