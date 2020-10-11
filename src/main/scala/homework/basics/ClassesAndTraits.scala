@@ -97,7 +97,7 @@ object ClassesAndTraits extends App {
     override def maxX: Double = x + radius
     override def minY: Double = y - radius
     override def maxY: Double = y + radius
-    override def area: Double = (Math.PI * Math.pow(radius, 2)).round
+    override def area: Double = (Math.PI * Math.pow(radius, 2))
     override def move(dx: Double, dy: Double, dz: Double = 0): Circle = Circle(x + dx, y + dy, radius)
   }
 
@@ -123,7 +123,8 @@ object ClassesAndTraits extends App {
       Rectangle(x + dx, y + dy, length, height)
   }
 
-  final case class Cuboid(x: Double, y: Double, z: Double, length: Double, height: Double, width: Double) extends Shape3D {
+  final case class Cuboid(x: Double, y: Double, z: Double, length: Double, height: Double, width: Double)
+      extends Shape3D {
     override def minX: Double = x - length / 2
     override def maxX: Double = x + length / 2
     override def minY: Double = y - height / 2
