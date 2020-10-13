@@ -63,16 +63,11 @@ object ControlStructures {
       case Right(x) => x
     }
 
-    val supportedCommands: List[String] = List("divide", "sum", "average", "min", "max")
-
-    (list.headOption, numbers) match {
-      case (Some(x), _) if !supportedCommands.contains(x.toLowerCase) =>
-        Left(ErrorMessage("Missing/Unsupported Command"))
-      case (_, y) if y.isEmpty                                        => Left(ErrorMessage("Numbers were not provided"))
-      case (_, _) if leftNumbers.nonEmpty                             =>
+    list.headOption match {
+      case Some(_) if leftNumbers.nonEmpty =>
         Left(ErrorMessage(s"Numbers required, incorrect format: ${leftNumbers.mkString(" ")}"))
-      case (Some(x), _)                                               =>
-        (x.toLowerCase, rightNumbers) match {
+      case Some(x)                         =>
+        if (rightNumbers.nonEmpty) (x.toLowerCase, rightNumbers) match {
           case ("divide", y)  => y match {
               case x :: xs :: Nil => Right(Divide(x, xs))
               case _              => Left(ErrorMessage("2 numbers expected"))
@@ -81,7 +76,11 @@ object ControlStructures {
           case ("average", y) => Right(Average(y))
           case ("min", y)     => Right(Min(y))
           case ("max", y)     => Right(Max(y))
+          case (x, _)         => Left(ErrorMessage(s"Unsupported Command: $x"))
         }
+        else Left(ErrorMessage("Too few numbers provided"))
+      case None                            => Left(ErrorMessage("No data provided"))
+
     }
   }
 

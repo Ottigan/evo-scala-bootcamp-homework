@@ -2,6 +2,7 @@ package homework.typeclass
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
+import scala.util.Try
 
 //fill in implementation gaps here making the ImplicitsHomeworkSpec pass!
 object ImplicitsHomework {
@@ -33,9 +34,12 @@ object ImplicitsHomework {
       def apply(value: T): SizeScore
     }
 
+    def sizeScore[T: GetSizeScore](value: T): SizeScore =
+      implicitly[GetSizeScore[T]].apply(value)
+
     object syntax {
       implicit class GetSizeScoreOps[T: GetSizeScore](inner: T) {
-        def sizeScore: SizeScore = ??? //implement the syntax!
+        def sizeScore: SizeScore = SuperVipCollections4s.sizeScore(inner)
       }
     }
 
@@ -54,15 +58,35 @@ object ImplicitsHomework {
     final class MutableBoundedCache[K: GetSizeScore, V: GetSizeScore](maxSizeScore: SizeScore) {
       //with this you can use .sizeScore syntax on keys and values
       import syntax._
-
+      import instances._
       /*
       mutable.LinkedHashMap is a mutable map container which preserves insertion order - this might be useful!
        */
       private val map = mutable.LinkedHashMap.empty[K, V]
+      var currentSizeScore: SizeScore = 0
 
-      def put(key: K, value: V): Unit = ???
+      def put(key: K, value: V): Unit = {
+        val kSize = key.sizeScore
+        val vSize = value.sizeScore
+        val sumOfSizes = kSize + vSize
 
-      def get(key: K): Option[V] = ???
+        if (currentSizeScore + sumOfSizes <= maxSizeScore) {
+          map += (key -> value)
+          currentSizeScore += sumOfSizes
+        } else if (sumOfSizes <= maxSizeScore) {
+          map.headOption match {
+            case Some((x -> y)) => {
+              currentSizeScore -= (x.sizeScore + y.sizeScore)
+              map -= x
+              put(key, value)
+            }
+            case _              =>
+          }
+        }
+
+      }
+
+      def get(key: K): Option[V] = Try(map(key)).toOption
     }
 
     /**
@@ -114,7 +138,44 @@ object ImplicitsHomework {
       If you struggle with writing generic instances for Iterate and Iterate2, start by writing instances for
       List and other collections and then replace those with generic instances.
        */
-      implicit def stubGetSizeScore[T]: GetSizeScore[T] = (_: T) => 42
+
+      implicit val byteGetSizeScore: GetSizeScore[Byte] = (x: Byte) => 1
+      implicit val intGetSizeScore: GetSizeScore[Int] = (x: Int) => 4
+      implicit val longGetSizeScore: GetSizeScore[Long] = (x: Long) => 8
+      implicit val charGetSizeScore: GetSizeScore[Char] = (x: Char) => 2
+      implicit val stringGetSizeScore: GetSizeScore[String] = (x: String) =>
+        if (x.isBlank) 12
+        else 12 + x.length * 2
+      implicit def listGetSizeScore[T: GetSizeScore]: GetSizeScore[List[T]] =
+        (x: List[T]) =>
+          if (x.isEmpty) 12
+          else x.map(sizeScore(_)).sum + 12
+      implicit def vectorGetSizeScore[T: GetSizeScore]: GetSizeScore[Vector[T]] =
+        (x: Vector[T]) =>
+          if (x.isEmpty) 12
+          else x.map(sizeScore(_)).sum + 12
+      implicit def arrayGetSizeScore[T: GetSizeScore]: GetSizeScore[Array[T]] =
+        (x: Array[T]) =>
+          if (x.isEmpty) 12
+          else x.map(sizeScore(_)).sum + 12
+      implicit def mapGetSizeScore[T: GetSizeScore]: GetSizeScore[Map[T, T]] = (x: Map[T, T]) =>
+        if (x.isEmpty) 12
+        else {
+          val kSize = x.keys.map(sizeScore(_)).sum
+          val vSize = x.values.map(sizeScore(_)).sum
+
+          12 + kSize + vSize
+        }
+      implicit def packedMultiMapGetSizeScore[T: GetSizeScore]: GetSizeScore[PackedMultiMap[T, T]] =
+        (value: PackedMultiMap[T, T]) => {
+          if (value.inner.isEmpty) 12
+          else {
+            value.inner.map {
+              case (x, y) => x.sizeScore + y.sizeScore
+            }.sum + 12
+          }
+
+        }
     }
   }
 

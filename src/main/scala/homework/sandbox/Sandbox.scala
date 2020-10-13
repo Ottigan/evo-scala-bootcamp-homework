@@ -2,60 +2,65 @@ package homework.sandbox
 
 object Sandbox extends App {
 
-  abstract class Animal {
-    def name: String
-  }
-  case class Cat(name: String) extends Animal
-  case class Dog(name: String) extends Animal
-
-  def printAnimalNames(animals: List[Animal]): Unit =
-    animals.foreach {
-      animal => println(animal.name)
-    }
-
-  val cats: List[Cat] = List(Cat("Whiskers"), Cat("Tom"))
-  val dogs: List[Dog] = List(Dog("Fido"), Dog("Rex"))
-
-  // prints: Whiskers, Tom
-  printAnimalNames(cats)
-
-  // prints: Fido, Rex
-  printAnimalNames(dogs)
-
-  abstract class Printer[-A] {
-    def print(value: A): Unit
+  //Let's call this thing a type-class!
+  trait Show[T] {
+    def apply(value: T): String
   }
 
-  class AnimalPrinter extends Printer[Animal] {
-    def print(animal: Animal): Unit =
-      println("The animal's name is: " + animal.name)
-  }
+  /*
+    This is equivalent to def show[T](value: T)(implicit show: Show[T]): String = ...
+    with the difference that the implicit argument is not named and can be obtained only using 'implicitly'.
 
-  class CatPrinter extends Printer[Cat] {
-    def print(cat: Cat): Unit =
-      println("The cat's name is: " + cat.name)
-  }
+    : Show syntax is called "a context bound"
+   */
+  def show[T: Show](value: T): String =
+    implicitly[Show[T]].apply(value)
 
-  def printMyCat(printer: Printer[Cat], cat: Cat): Unit =
-    printer.print(cat)
-
-  val catPrinter: Printer[Cat] = new CatPrinter
-  val animalPrinter: Printer[Animal] = new AnimalPrinter
-
-  printMyCat(catPrinter, Cat("Boots"))
-  printMyCat(animalPrinter, Cat("Boots"))
-
-  class Container[A](value: A) {
-    private var _value: A = value
-    def getValue: A = _value
-    def setValue(value: A): Unit = {
-      _value = value
+  object syntax {
+    //our old friend implicit conversion but now with an implicit value requirement
+    implicit class ShowOps[T: Show](inner: T) {
+      def show: String = Sandbox.show(inner)
     }
   }
 
-  val catContainer: Container[Cat] = new Container(Cat("Felix"))
-  //val animalContainer: Container[Animal] = catContainer
-  //animalContainer.setValue(Dog("Spot"))
-  //val cat: Cat = catContainer.getValue // Oops, we'd end up with a Dog assigned to a Cat
+  object instances {
+    /*
+      Type-classes provide a way to create generic logic which can be extended to work on any type.
+
+      Here we extend all the possible logic working on Show, to work on some standard library types.
+     */
+
+    //for String's
+    implicit val stringShow: Show[String] = (value: String) => value
+    //for Int's
+    implicit val intShow: Show[Int] = (value: Int) => value.toString
+    //even for any Seq[T] where T itself has a Show instance
+    implicit def seqShow[T: Show]: Show[Seq[T]] =
+      (value: Seq[T]) => value.map(show(_)).mkString("(", ", ", ")")
+  }
+
+  object Workspace {
+    import instances._
+    import syntax._
+
+    /*
+      And here we extend all the possible logic working on Show, to work on our custom types!
+     */
+    case class MyLuckyNumber(value: Int)
+    object MyLuckyNumber {
+      implicit val myLuckyNumberShow: Show[MyLuckyNumber] =
+        (luckyNumber: MyLuckyNumber) => s"lucky ${luckyNumber.value}"
+    }
+
+    def showEverything(): Unit = {
+      println(42.show)
+      println("hello!".show)
+      println(Seq("I", "am", "a", "ghost").show)
+      println(Seq(1, 2, 3, 4, 5).show)
+      println(Seq(MyLuckyNumber(13), MyLuckyNumber(99)).show)
+    }
+
+  }
+  Workspace.showEverything()
 
 }
