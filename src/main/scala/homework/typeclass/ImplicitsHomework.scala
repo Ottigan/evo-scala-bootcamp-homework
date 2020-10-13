@@ -57,8 +57,10 @@ object ImplicitsHomework {
       */
     final class MutableBoundedCache[K: GetSizeScore, V: GetSizeScore](maxSizeScore: SizeScore) {
       //with this you can use .sizeScore syntax on keys and values
+
       import syntax._
       import instances._
+
       /*
       mutable.LinkedHashMap is a mutable map container which preserves insertion order - this might be useful!
        */
@@ -83,7 +85,6 @@ object ImplicitsHomework {
             case _              =>
           }
         }
-
       }
 
       def get(key: K): Option[V] = Try(map(key)).toOption
@@ -115,6 +116,7 @@ object ImplicitsHomework {
     }
 
     object instances {
+
       import syntax._
 
       implicit val iterableOnceIterate: Iterate[Iterable] = new Iterate[Iterable] {
@@ -174,7 +176,6 @@ object ImplicitsHomework {
               case (x, y) => x.sizeScore + y.sizeScore
             }.sum + 12
           }
-
         }
     }
   }
@@ -185,6 +186,8 @@ object ImplicitsHomework {
    */
   object MyTwitter {
     import SuperVipCollections4s._
+    import syntax._
+    import instances._
 
     final case class Twit(
         id: Long,
@@ -194,11 +197,23 @@ object ImplicitsHomework {
         fbiNotes: List[FbiNote]
     )
 
+    object Twit {
+      implicit val twitGetSizeScore: GetSizeScore[Twit] = (x: Twit) => {
+        12 + x.id.sizeScore + x.userId.sizeScore + x.hashTags.sizeScore + x.attributes.sizeScore + x.fbiNotes.sizeScore
+      }
+    }
+
     final case class FbiNote(
         month: String,
         favouriteChar: Char,
         watchedPewDiePieTimes: Long
     )
+
+    object FbiNote {
+      implicit val fbiNoteGetSizeScore: GetSizeScore[FbiNote] = (x: FbiNote) => {
+        12 + x.month.sizeScore + x.favouriteChar.sizeScore + x.watchedPewDiePieTimes.sizeScore
+      }
+    }
 
     trait TwitCache {
       def put(twit: Twit): Unit
@@ -208,6 +223,10 @@ object ImplicitsHomework {
     /*
     Return an implementation based on MutableBoundedCache[Long, Twit]
      */
-    def createTwitCache(maxSizeScore: SizeScore): TwitCache = ???
+    def createTwitCache(maxSizeScore: SizeScore): TwitCache = new TwitCache {
+      val cache = new MutableBoundedCache[Long, Twit](maxSizeScore)
+      override def put(twit: Twit): Unit = cache.put(twit.id, twit)
+      override def get(id: Long): Option[Twit] = cache.get(id)
+    }
   }
 }
