@@ -15,28 +15,7 @@ object AlgebraicDataTypes extends App {
     case object Spade extends Suit
   }
 
-  // Alternative
-  case class SuitAnyVal private (suit: String) extends AnyVal
-  object SuitAnyVal {
-    def create(suit: String): Option[SuitAnyVal] = suit match {
-      case x @ "c" => Some(SuitAnyVal(x))
-      case x @ "d" => Some(SuitAnyVal(x))
-      case x @ "h" => Some(SuitAnyVal(x))
-      case x @ "s" => Some(SuitAnyVal(x))
-      case _       => None
-    }
-  }
-
   // 2. Rank
-  case class RankAnyVal private (rank: Int) extends AnyVal
-  object RankAnyVal {
-    def create(rank: Int): Option[RankAnyVal] = {
-      if (rank > 1 && rank < 15) Some(RankAnyVal(rank))
-      else None
-    }
-  }
-
-  // Alternative
   sealed trait Rank {
     val rank: Int
   }
@@ -148,9 +127,9 @@ object AlgebraicDataTypes extends App {
 
   // 9. Test Result (Hands ranked in a particular order for a particular Board, accounting for splits)
   // If the nested Set contains more than one element then you would .mkString("=")
-  sealed abstract case class TestOutput private (rankedHands: Set[Set[Hand]])
+  sealed abstract case class TestOutput private (rankedHands: List[List[Hand]])
   object TestOutput {
-    def create(rankedHands: Set[Set[Hand]]): Option[TestOutput] = {
+    def create(rankedHands: List[List[Hand]]): Option[TestOutput] = {
       if (rankedHands.forall(_.nonEmpty)) Some(new TestOutput(rankedHands) {})
       else None
     }

@@ -128,6 +128,15 @@ object ImplicitsHomework {
       }
       //Provide Iterate2 instances for Map and PackedMultiMap!
       //if the code doesn't compile while you think it should - sometimes full rebuild helps!
+      implicit val iterateMap: Iterate2[Map] = new Iterate2[Map] {
+        override def iterator1[T, S](f: Map[T, S]): Iterator[T] = f.keys.iterator
+        override def iterator2[T, S](f: Map[T, S]): Iterator[S] = f.values.iterator
+      }
+
+      implicit val iteratePackedMultiMap: Iterate2[PackedMultiMap] = new Iterate2[PackedMultiMap] {
+        override def iterator1[T, S](f: PackedMultiMap[T, S]): Iterator[T] = f.inner.toMap.keys.iterator
+        override def iterator2[T, S](f: PackedMultiMap[T, S]): Iterator[S] = f.inner.toMap.values.iterator
+      }
 
       /*
       replace this big guy with proper implicit instances for types:
@@ -148,19 +157,22 @@ object ImplicitsHomework {
       implicit val stringGetSizeScore: GetSizeScore[String] = (x: String) =>
         if (x.isBlank) 12
         else 12 + x.length * 2
-      implicit def listGetSizeScore[T: GetSizeScore]: GetSizeScore[List[T]] =
-        (x: List[T]) =>
-          if (x.isEmpty) 12
-          else x.map(sizeScore(_)).sum + 12
-      implicit def vectorGetSizeScore[T: GetSizeScore]: GetSizeScore[Vector[T]] =
-        (x: Vector[T]) =>
-          if (x.isEmpty) 12
-          else x.map(sizeScore(_)).sum + 12
-      implicit def arrayGetSizeScore[T: GetSizeScore]: GetSizeScore[Array[T]] =
+      implicit def arrayGetSizeScore[T: GetSizeScore]: GetSizeScore[Array[T]] = {
         (x: Array[T]) =>
           if (x.isEmpty) 12
           else x.map(sizeScore(_)).sum + 12
-      implicit def mapGetSizeScore[T: GetSizeScore]: GetSizeScore[Map[T, T]] = (x: Map[T, T]) =>
+      }
+      implicit def listGetSizeScore[T: GetSizeScore]: GetSizeScore[List[T]] = {
+        (x: List[T]) =>
+          if (x.isEmpty) 12
+          else x.map(sizeScore(_)).sum + 12
+      }
+      implicit def vectorGetSizeScore[T: GetSizeScore]: GetSizeScore[Vector[T]] = {
+        (x: Vector[T]) =>
+          if (x.isEmpty) 12
+          else x.map(sizeScore(_)).sum + 12
+      }
+      implicit def mapGetSizeScore[T: GetSizeScore]: GetSizeScore[Map[T, T]] = (x: Map[T, T]) => {
         if (x.isEmpty) 12
         else {
           val kSize = x.keys.map(sizeScore(_)).sum
@@ -168,6 +180,7 @@ object ImplicitsHomework {
 
           12 + kSize + vSize
         }
+      }
       implicit def packedMultiMapGetSizeScore[T: GetSizeScore]: GetSizeScore[PackedMultiMap[T, T]] =
         (value: PackedMultiMap[T, T]) => {
           if (value.inner.isEmpty) 12
