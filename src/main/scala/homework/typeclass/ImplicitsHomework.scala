@@ -172,7 +172,7 @@ object ImplicitsHomework {
           if (x.isEmpty) 12
           else x.map(sizeScore(_)).sum + 12
       }
-      implicit def mapGetSizeScore[T: GetSizeScore]: GetSizeScore[Map[T, T]] = (x: Map[T, T]) => {
+      implicit def mapGetSizeScore[K: GetSizeScore, V: GetSizeScore]: GetSizeScore[Map[K, V]] = (x: Map[K, V]) => {
         if (x.isEmpty) 12
         else {
           val kSize = x.keys.map(sizeScore(_)).sum
@@ -181,8 +181,8 @@ object ImplicitsHomework {
           12 + kSize + vSize
         }
       }
-      implicit def packedMultiMapGetSizeScore[T: GetSizeScore]: GetSizeScore[PackedMultiMap[T, T]] =
-        (value: PackedMultiMap[T, T]) => {
+      implicit def packedMultiMapGetSizeScore[K: GetSizeScore, V: GetSizeScore]: GetSizeScore[PackedMultiMap[K, V]] =
+        (value: PackedMultiMap[K, V]) => {
           if (value.inner.isEmpty) 12
           else {
             value.inner.map {
