@@ -64,8 +64,7 @@ object Homework extends App {
     def create(number: String, company: String): AllErrorsOr[PaymentCardNumber] = {
       import ValidationError._
 
-      // Treating the provided String as if there are no spaces
-
+      // Treating the provided String for "number" as if there are no spaces/separators/delimiters
       def numberNumeric: AllErrorsOr[PaymentCardNumber] = {
         if (!number.forall(x => Try(x.toInt).isSuccess)) CardNumberIsNotNumeric.invalidNec
         else PaymentCardNumber(number).validNec
@@ -75,6 +74,8 @@ object Homework extends App {
         else if (number.length < 16) CardNumberTooShort.invalidNec
         else PaymentCardNumber(number).validNec
       }
+      // Number for Visa is supposed to start with 4
+      // while for Mastercard it is in the range from 51-55
       def numberPrefix: AllErrorsOr[PaymentCardNumber] = {
         if (company.toUpperCase == "VISA" && number.matches("^[4]\\d+")) PaymentCardNumber(number).validNec
         else if (company.toUpperCase == "MASTERCARD" && number.matches("^[5][1-5]\\d+"))
@@ -88,6 +89,10 @@ object Homework extends App {
 
   case class Name(name: String) extends AnyVal
   object Name {
+    // Found many contradicting articles, but supposedly the max length for card holder name is 21 or 22 in both cases
+    // Where the issuing bank will ask you to provide some sort of an alias in case length of your name does not adhere to this standard
+    // Even if your surname consists of 1 letter (It is a thing... I was surprised),
+    // you still will have to adhere to first name consisting of at least 3 characters and same with surname
     def create(name: String): AllErrorsOr[Name] = {
       if (name.matches("^([A-Za-z]){3,}\\s([A-Za-z]){3,}$") && name.length < 22) Name(name).validNec
       else ValidationError.CardNameError.invalidNec
@@ -97,22 +102,25 @@ object Homework extends App {
   case class ExpirationDate(date: String) extends AnyVal
   object ExpirationDate {
     def create(date: String): AllErrorsOr[ExpirationDate] = {
-      val serverNow = LocalDate.now()
 
       def parseDate: AllErrorsOr[LocalDate] = {
+        //Removing characters such as "/" or "-"
+        // This might be too liberal of a way, would appreciate some feedback,
+        // specifically in regards to handling Time/Date comparisons in Scala/Java
         val dateWithoutSymbols = date.filter(_.isDigit)
+
         if (dateWithoutSymbols.length == 4) {
           val month = dateWithoutSymbols.slice(0, 2).toInt
           val year = dateWithoutSymbols.slice(2, 4).toInt
+
+          // If card shows 12/21 then it is valid till 01/01/22
           if (month == 12) LocalDate.parse(s"20${year + 1}-01-01").validNec
           else LocalDate.parse(s"20$year-$month-01").validNec
-
-          LocalDate.parse(s"20$year-$month-01").validNec
         } else ValidationError.ExpirationDateInvalid.invalidNec
       }
 
       def serverNowIsBefore(expirationDate: LocalDate): AllErrorsOr[ExpirationDate] = {
-        if (serverNow.isBefore(expirationDate)) ExpirationDate(date).validNec
+        if (LocalDate.now().isBefore(expirationDate)) ExpirationDate(date).validNec
         else ValidationError.ExpiredCard.invalidNec
       }
 
