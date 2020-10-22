@@ -11,6 +11,7 @@ import io.circe
 import io.circe.Decoder
 import io.circe.parser._
 import io.circe.generic.JsonCodec
+import io.circe.generic.extras._
 import org.scalatest.EitherValues
 import org.scalatest.matchers.must.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -55,7 +56,15 @@ class HomeworkSpec extends AnyWordSpec with Matchers with EitherValues {
 }
 
 object HomeworkSpec {
-  @JsonCodec final case class TeamTotals(assists: String, full_timeout_remaining: String, plusMinus: String)
+  implicit val config: Configuration = Configuration.default
+
+  // https://circe.github.io/circe/codecs/custom-codecs.html had some nice examples,
+  // otherwise I would have mixed annotations with Decoder[TeamTotals], but that is not ideal if I understood it correctly
+  @ConfiguredJsonCodec final case class TeamTotals(
+      assists: String,
+      @JsonKey("full_timeout_remaining") fullTimeoutRemaining: String,
+      plusMinus: String
+  )
   @JsonCodec final case class TeamBoxScore(totals: TeamTotals)
   @JsonCodec final case class GameStats(hTeam: TeamBoxScore, vTeam: TeamBoxScore)
   @JsonCodec final case class PrevMatchup(gameDate: LocalDate, gameId: String)
@@ -94,11 +103,10 @@ object HomeworkSpec {
   )
 
   implicit val decodeLocalDate: Decoder[LocalDate] =
-    Decoder.decodeString.emap(str =>
-      Either.catchNonFatal(LocalDate.parse(s"${str.slice(0, 4)}-${str.slice(4, 6)}-${str.slice(6, 8)}")).leftMap(err =>
-        "Date: " + err.getMessage
-      )
-    )
+    Decoder.decodeString.emap(str => {
+      val formatter: DateTimeFormatter = DateTimeFormatter.BASIC_ISO_DATE
+      Either.catchNonFatal(LocalDate.parse(str, formatter)).leftMap(err => "Date: " + err.getMessage)
+    })
 
   @JsonCodec final case class Scoreboard(games: List[Game], numGames: Int)
 
