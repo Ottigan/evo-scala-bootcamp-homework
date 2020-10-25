@@ -1058,6 +1058,12 @@ class Exercise14StateSpec extends AnyFunSuite {
 
   class Fixture {
     val repository = new PlayerRepository[F] {
+      val playerList = State.set(List(
+        Player("1", "John", "a@a", 10),
+        Player("2", "Ann", "a@a", 30),
+        Player("3", "Peter", "a@a", 40),
+        Player("4", "Dick", "a@a", 20)
+      ))
       def byId(id: String) = State.pure(None)
       def all = State.get
       def update(player: Player) = State.modify { players =>
@@ -1081,9 +1087,14 @@ class Exercise14StateSpec extends AnyFunSuite {
     val service = PlayerService[F](f.repository, f.logging)
 
     // perform the test
-    service.deleteWorst(???) map { _ =>
+    service.deleteWorst(30) map { _ =>
       // validate the results
-      assert(???)
+      f.repository.all.map(result =>
+        assert(result == List(
+          Player("2", "Ann", "a@a", 30),
+          Player("3", "Peter", "a@a", 40)
+        ))
+      )
     }
   }
 
@@ -1094,11 +1105,16 @@ class Exercise14StateSpec extends AnyFunSuite {
     val service = PlayerService[F](f.repository, f.logging)
 
     // perform the test
-    service.celebrate(???) map { _ =>
-      // validate the results
-      assert(???)
+    service.celebrate(50) map { _ =>
+      f.repository.all.map(result =>
+        // validate the results
+        assert(result == List(
+          Player("1", "John", "a@a", 60),
+          Player("2", "Ann", "a@a", 80),
+          Player("3", "Peter", "a@a", 90),
+          Player("4", "Dick", "a@a", 70)
+        ))
+      )
     }
-
   }
-
 }
