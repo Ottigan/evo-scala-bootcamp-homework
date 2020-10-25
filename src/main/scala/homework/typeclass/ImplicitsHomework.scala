@@ -2,7 +2,6 @@ package homework.typeclass
 
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
-import scala.util.Try
 
 //fill in implementation gaps here making the ImplicitsHomeworkSpec pass!
 object ImplicitsHomework {
@@ -87,7 +86,7 @@ object ImplicitsHomework {
         }
       }
 
-      def get(key: K): Option[V] = Try(map(key)).toOption
+      def get(key: K): Option[V] = map.get(key)
     }
 
     /**
@@ -154,42 +153,26 @@ object ImplicitsHomework {
       implicit val intGetSizeScore: GetSizeScore[Int] = (x: Int) => 4
       implicit val longGetSizeScore: GetSizeScore[Long] = (x: Long) => 8
       implicit val charGetSizeScore: GetSizeScore[Char] = (x: Char) => 2
-      implicit val stringGetSizeScore: GetSizeScore[String] = (x: String) =>
-        if (x.isEmpty) 12
-        else 12 + x.length * 2
+      implicit val stringGetSizeScore: GetSizeScore[String] = (x: String) => 12 + x.length * 2
       implicit def arrayGetSizeScore[T: GetSizeScore]: GetSizeScore[Array[T]] = {
-        (x: Array[T]) =>
-          if (x.isEmpty) 12
-          else x.map(sizeScore(_)).sum + 12
+        (x: Array[T]) => x.iterator.map(sizeScore(_)).sum + 12
       }
       implicit def listGetSizeScore[T: GetSizeScore]: GetSizeScore[List[T]] = {
-        (x: List[T]) =>
-          if (x.isEmpty) 12
-          else x.map(sizeScore(_)).sum + 12
+        (x: List[T]) => x.iterator.map(sizeScore(_)).sum + 12
       }
       implicit def vectorGetSizeScore[T: GetSizeScore]: GetSizeScore[Vector[T]] = {
-        (x: Vector[T]) =>
-          if (x.isEmpty) 12
-          else x.map(sizeScore(_)).sum + 12
+        (x: Vector[T]) => x.iterator.map(sizeScore(_)).sum + 12
       }
       implicit def mapGetSizeScore[K: GetSizeScore, V: GetSizeScore]: GetSizeScore[Map[K, V]] = (x: Map[K, V]) => {
-        if (x.isEmpty) 12
-        else {
-          val kSize = x.keys.map(sizeScore(_)).sum
-          val vSize = x.values.map(sizeScore(_)).sum
-
-          12 + kSize + vSize
-        }
+        val kSize = x.keys.iterator.map(sizeScore(_)).sum
+        val vSize = x.values.iterator.map(sizeScore(_)).sum
+        12 + kSize + vSize
       }
       implicit def packedMultiMapGetSizeScore[K: GetSizeScore, V: GetSizeScore]: GetSizeScore[PackedMultiMap[K, V]] =
-        (value: PackedMultiMap[K, V]) => {
-          if (value.inner.isEmpty) 12
-          else {
-            value.inner.map {
-              case (x, y) => x.sizeScore + y.sizeScore
-            }.sum + 12
-          }
-        }
+        (value: PackedMultiMap[K, V]) =>
+          value.inner.iterator.map {
+            case (x, y) => x.sizeScore + y.sizeScore
+          }.sum + 12
     }
   }
 
