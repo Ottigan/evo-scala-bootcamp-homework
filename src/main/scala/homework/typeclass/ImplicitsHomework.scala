@@ -155,7 +155,7 @@ object ImplicitsHomework {
       implicit val longGetSizeScore: GetSizeScore[Long] = (x: Long) => 8
       implicit val charGetSizeScore: GetSizeScore[Char] = (x: Char) => 2
       implicit val stringGetSizeScore: GetSizeScore[String] = (x: String) =>
-        if (x.isBlank) 12
+        if (x.isEmpty) 12
         else 12 + x.length * 2
       implicit def arrayGetSizeScore[T: GetSizeScore]: GetSizeScore[Array[T]] = {
         (x: Array[T]) =>
