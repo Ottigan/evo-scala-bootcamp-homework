@@ -35,6 +35,12 @@ object Contravariant extends App {
 
   implicit val cardOrdering: Ordering[Card] = Ordering.by(_.rank.rank)
 
+  /** Alternative, which in some scenario might prove useful
+    *
+    * implicit val rankOrdering: Ordering[Rank] = Ordering.by(_.rank)
+    * implicit val cardOrdering2: Ordering[Card] = rankOrdering.contramap(_.rank)
+    */
+
   val sortedTestCombination: Option[Combination] = for {
     x           <- testCombination
     sortedCombo <- Combination.create(x.combination.sorted)
