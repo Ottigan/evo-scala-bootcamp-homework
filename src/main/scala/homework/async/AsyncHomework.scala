@@ -3,6 +3,8 @@ package homework.async
 import java.net.URL
 import java.util.concurrent.Executors
 
+import cats.implicits._
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 
@@ -21,7 +23,12 @@ import scala.io.Source
 object AsyncHomework extends App {
   private implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
-  //put your code there
+  for {
+    arg <- args
+    body <- fetchPageBody(arg)
+    urls <- findLinkUrls(body)
+    names <- Future.sequence(urls.map(fetchServerName))
+  } names.map(_.getOrElse("")).filter(_ != "").sorted.foreach(println)
 
   private def fetchPageBody(url: String): Future[String] = {
     println(f"Fetching $url")
@@ -35,16 +42,15 @@ object AsyncHomework extends App {
     }
   }
 
+  private def findLinkUrls(html: String): Future[List[String]] = Future {
+    val linkPattern = """href="(http[^"]+)"""".r
+    linkPattern.findAllMatchIn(html).map(m => m.group(1)).toList
+  }
+
   private def fetchServerName(url: String): Future[Option[String]] = {
     println(s"Fetching server name header for $url")
     Future {
       Option(new URL(url).openConnection().getHeaderField("Server"))
     }
-  }
-
-
-  private def findLinkUrls(html: String): Future[List[String]] = Future {
-    val linkPattern = """href="(http[^"]+)"""".r
-    linkPattern.findAllMatchIn(html).map(m => m.group(1)).toList
   }
 }
