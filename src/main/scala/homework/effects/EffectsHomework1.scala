@@ -3,7 +3,7 @@ package homework.effects
 import homework.effects.EffectsHomework1.IO.unit
 
 import scala.concurrent.Future
-import scala.util.Try
+import scala.util.{Success, Failure, Try}
 
 /*
  * Homework 1. Provide your own implementation of a subset of `IO` functionality.
@@ -31,10 +31,10 @@ import scala.util.Try
 object EffectsHomework1 {
   final class IO[A](private val run: () => A) {
     def map[B](f: A => B): IO[B] = new IO(() => f(run()))
-    def flatMap[B](f: A => IO[B]): IO[B] = new IO(() => run()).map(f) // Maybe?
-    def *>[B](another: IO[B]): IO[B] = ???
-    def as[B](newValue: => B): IO[B] = ???
-    def void: IO[Unit] = ???
+    def flatMap[B](f: A => IO[B]): IO[B] = new IO(f(run()).run)
+    def *>[B](another: IO[B]): IO[B] = flatMap(_ => another)
+    def as[B](newValue: => B): IO[B] = map(_ => newValue)
+    def void: IO[Unit] = unit
     def attempt: IO[Either[Throwable, A]] = ???
     def option: IO[Option[A]] = ???
     def handleErrorWith[AA >: A](f: Throwable => IO[AA]): IO[AA] = ???
@@ -45,19 +45,28 @@ object EffectsHomework1 {
   }
 
   object IO {
-    def apply[A](body: => A): IO[A] = IO.delay(body)
-    def suspend[A](thunk: => IO[A]): IO[A] = ???
-    def delay[A](body: => A): IO[A] = ???
-    def pure[A](a: A): IO[A] = IO(a)
-    def fromEither[A](e: Either[Throwable, A]): IO[A] = ???
-    def fromOption[A](option: Option[A])(orElse: => Throwable): IO[A] = ???
-    def fromTry[A](t: Try[A]): IO[A] = ???
-    def none[A]: IO[Option[A]] = ???
-    def raiseError[A](e: Throwable): IO[A] = ???
-    def raiseUnless(cond: Boolean)(e: => Throwable): IO[Unit] = ???
-    def raiseWhen(cond: Boolean)(e: => Throwable): IO[Unit] = ???
-    def unlessA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = ???
-    def whenA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = ???
+    def apply[A](body: => A): IO[A] = delay(body)
+    def suspend[A](thunk: => IO[A]): IO[A] = thunk
+    def delay[A](body: => A): IO[A] = new IO(() => body)
+    def pure[A](a: A): IO[A] = new IO(() => a)
+    def fromEither[A](e: Either[Throwable, A]): IO[A] = e match {
+      case Right(v) => IO(v)
+      case Left(e)  => raiseError(e)
+    }
+    def fromOption[A](option: Option[A])(orElse: => Throwable): IO[A] = option match {
+      case Some(v) => IO(v)
+      case None    => raiseError(orElse)
+    }
+    def fromTry[A](t: Try[A]): IO[A] = t match {
+      case Success(v) => IO(v)
+      case Failure(e) => raiseError(e)
+    }
+    def none[A]: IO[Option[A]] = pure(None)
+    def raiseError[A](e: Throwable): IO[A] = IO(throw e)
+    def raiseUnless(cond: Boolean)(e: => Throwable): IO[Unit] = if (cond) unit else raiseError(e)
+    def raiseWhen(cond: Boolean)(e: => Throwable): IO[Unit] = if (cond) raiseError(e) else unit
+    def unlessA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = if (cond) unit else action
+    def whenA(cond: Boolean)(action: => IO[Unit]): IO[Unit] = if (cond) action else unit
     val unit: IO[Unit] = pure(())
   }
 }
