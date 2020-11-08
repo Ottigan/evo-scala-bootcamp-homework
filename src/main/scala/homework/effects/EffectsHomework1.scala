@@ -1,9 +1,9 @@
 package homework.effects
 
-import homework.effects.EffectsHomework1.IO.unit
+import homework.effects.EffectsHomework1.IO.raiseError
 
-import scala.concurrent.Future
-import scala.util.{Success, Failure, Try}
+import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success, Try}
 
 /*
  * Homework 1. Provide your own implementation of a subset of `IO` functionality.
@@ -34,19 +34,19 @@ object EffectsHomework1 {
     def flatMap[B](f: A => IO[B]): IO[B] = new IO(f(run()).run)
     def *>[B](another: IO[B]): IO[B] = flatMap(_ => another)
     def as[B](newValue: => B): IO[B] = map(_ => newValue)
-    def void: IO[Unit] = unit
-    def attempt: IO[Either[Throwable, A]] = ???
-    def option: IO[Option[A]] = ???
+    def void: IO[Unit] = map(_ => ())
+    def attempt: IO[Either[Throwable, A]] = redeem(Left(_), Right(_))
+    def option: IO[Option[A]] = redeem(_ => None, Some(_))
     def handleErrorWith[AA >: A](f: Throwable => IO[AA]): IO[AA] = ???
     def redeem[B](recover: Throwable => B, map: A => B): IO[B] = ???
     def redeemWith[B](recover: Throwable => IO[B], bind: A => IO[B]): IO[B] = ???
     def unsafeRunSync(): A = run()
-    def unsafeToFuture(): Future[A] = ???
+    def unsafeToFuture(): Future[A] = Promise[A]().future
   }
 
   object IO {
     def apply[A](body: => A): IO[A] = delay(body)
-    def suspend[A](thunk: => IO[A]): IO[A] = thunk
+    def suspend[A](thunk: => IO[A]): IO[A] = new IO[A](thunk.run)
     def delay[A](body: => A): IO[A] = new IO(() => body)
     def pure[A](a: A): IO[A] = new IO(() => a)
     def fromEither[A](e: Either[Throwable, A]): IO[A] = e match {
