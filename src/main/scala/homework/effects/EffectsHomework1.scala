@@ -1,7 +1,5 @@
 package homework.effects
 
-import homework.effects.EffectsHomework1.IO.raiseError
-
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
@@ -35,13 +33,13 @@ object EffectsHomework1 {
     def *>[B](another: IO[B]): IO[B] = flatMap(_ => another)
     def as[B](newValue: => B): IO[B] = map(_ => newValue)
     def void: IO[Unit] = map(_ => ())
-    def attempt: IO[Either[Throwable, A]] = redeem(Left(_), Right(_))
+    def attempt: IO[Either[Throwable, A]] = new IO(() => Try(run()).toEither)
     def option: IO[Option[A]] = redeem(_ => None, Some(_))
     def handleErrorWith[AA >: A](f: Throwable => IO[AA]): IO[AA] = ???
-    def redeem[B](recover: Throwable => B, map: A => B): IO[B] = ???
-    def redeemWith[B](recover: Throwable => IO[B], bind: A => IO[B]): IO[B] = ???
+    def redeem[B](recover: Throwable => B, map: A => B): IO[B] = attempt.map(_.fold(recover, map))
+    def redeemWith[B](recover: Throwable => IO[B], bind: A => IO[B]): IO[B] = attempt.flatMap(_.fold(recover, bind))
     def unsafeRunSync(): A = run()
-    def unsafeToFuture(): Future[A] = Promise[A]().future
+    def unsafeToFuture(): Future[A] = ???
   }
 
   object IO {
