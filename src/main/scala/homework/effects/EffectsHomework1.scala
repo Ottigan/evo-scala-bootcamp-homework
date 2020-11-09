@@ -1,7 +1,8 @@
 package homework.effects
 
-import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.Try
 
 /*
  * Homework 1. Provide your own implementation of a subset of `IO` functionality.
@@ -39,7 +40,7 @@ object EffectsHomework1 {
     def redeem[B](recover: Throwable => B, map: A => B): IO[B] = attempt.map(_.fold(recover, map))
     def redeemWith[B](recover: Throwable => IO[B], bind: A => IO[B]): IO[B] = attempt.flatMap(_.fold(recover, bind))
     def unsafeRunSync(): A = run()
-    def unsafeToFuture(): Future[A] = ???
+    def unsafeToFuture(): Future[A] = Future(run())
   }
 
   object IO {
@@ -47,18 +48,14 @@ object EffectsHomework1 {
     def suspend[A](thunk: => IO[A]): IO[A] = new IO[A](thunk.run)
     def delay[A](body: => A): IO[A] = new IO(() => body)
     def pure[A](a: A): IO[A] = new IO(() => a)
-    def fromEither[A](e: Either[Throwable, A]): IO[A] = e match {
-      case Right(v) => IO(v)
-      case Left(e)  => raiseError(e)
-    }
-    def fromOption[A](option: Option[A])(orElse: => Throwable): IO[A] = option match {
-      case Some(v) => IO(v)
-      case None    => raiseError(orElse)
-    }
-    def fromTry[A](t: Try[A]): IO[A] = t match {
-      case Success(v) => IO(v)
-      case Failure(e) => raiseError(e)
-    }
+    def fromEither[A](e: Either[Throwable, A]): IO[A] = e.fold(raiseError, IO(_))
+    /*
+     *  Did try option#fold, but following code did not compile
+     *  option.fold(raiseError(orElse))(IO(_))
+     *  Really wondering as to why :/
+     */
+    def fromOption[A](option: Option[A])(orElse: => Throwable): IO[A] = option.map(IO(_)).getOrElse(raiseError(orElse))
+    def fromTry[A](t: Try[A]): IO[A] = t.fold(raiseError, IO(_))
     def none[A]: IO[Option[A]] = pure(None)
     def raiseError[A](e: Throwable): IO[A] = IO(throw e)
     def raiseUnless(cond: Boolean)(e: => Throwable): IO[Unit] = if (cond) unit else raiseError(e)
