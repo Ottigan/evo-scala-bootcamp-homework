@@ -2,7 +2,7 @@ package homework.effects
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /*
  * Homework 1. Provide your own implementation of a subset of `IO` functionality.
@@ -36,7 +36,7 @@ object EffectsHomework1 {
     def void: IO[Unit] = map(_ => ())
     def attempt: IO[Either[Throwable, A]] = new IO(() => Try(run()).toEither)
     def option: IO[Option[A]] = redeem(_ => None, Some(_))
-    def handleErrorWith[AA >: A](f: Throwable => IO[AA]): IO[AA] = ???
+    def handleErrorWith[AA >: A](f: Throwable => IO[AA]): IO[AA] = attempt.flatMap(_.toTry.fold(f, IO(_)))
     def redeem[B](recover: Throwable => B, map: A => B): IO[B] = attempt.map(_.fold(recover, map))
     def redeemWith[B](recover: Throwable => IO[B], bind: A => IO[B]): IO[B] = attempt.flatMap(_.fold(recover, bind))
     def unsafeRunSync(): A = run()
