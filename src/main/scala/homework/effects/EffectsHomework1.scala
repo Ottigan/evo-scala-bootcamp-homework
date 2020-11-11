@@ -2,7 +2,7 @@ package homework.effects
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /*
  * Homework 1. Provide your own implementation of a subset of `IO` functionality.
@@ -29,12 +29,12 @@ import scala.util.{Failure, Success, Try}
  */
 object EffectsHomework1 {
   final class IO[A](private val run: () => A) {
-    def map[B](f: A => B): IO[B] = new IO(() => f(run()))
-    def flatMap[B](f: A => IO[B]): IO[B] = new IO(f(run()).run)
+    def map[B](f: A => B): IO[B] = IO(f(run()))
+    def flatMap[B](f: A => IO[B]): IO[B] = IO(f(run()).run())
     def *>[B](another: IO[B]): IO[B] = flatMap(_ => another)
     def as[B](newValue: => B): IO[B] = map(_ => newValue)
     def void: IO[Unit] = map(_ => ())
-    def attempt: IO[Either[Throwable, A]] = new IO(() => Try(run()).toEither)
+    def attempt: IO[Either[Throwable, A]] = IO(Try(run()).toEither)
     def option: IO[Option[A]] = redeem(_ => None, Some(_))
     def handleErrorWith[AA >: A](f: Throwable => IO[AA]): IO[AA] = attempt.flatMap(_.toTry.fold(f, IO(_)))
     def redeem[B](recover: Throwable => B, map: A => B): IO[B] = attempt.map(_.fold(recover, map))
