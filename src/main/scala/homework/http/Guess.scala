@@ -1,6 +1,7 @@
 package homework.http
 
 import cats.effect.{ExitCode, IO, IOApp}
+import cats.implicits.catsSyntaxFlatMapOps
 import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
@@ -8,10 +9,10 @@ import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.circe.CirceEntityCodec._
-import org.http4s.Status.{NotFound, Successful}
 
 import scala.concurrent.ExecutionContext
 import io.circe.generic.auto._
+import org.http4s.client.Client
 
 import scala.util.Random
 
@@ -36,6 +37,7 @@ final case class Game(min: Int, max: Int, attempts: Int, numberToGuess: Int, id:
 object Game {
   def create(t: Template, number: Int, id: String): Game = Game(t.min, t.max, t.attempts, number, id)
 }
+
 final case class CurrentGames(games: List[Game]) {
   def addGame(game: Game): CurrentGames = CurrentGames.create(games :+ game)
   def removeGame(game: Game): CurrentGames = CurrentGames.create(games.filterNot(_ == game))
@@ -77,40 +79,44 @@ object GuessServer extends IOApp {
             .map(_.addCookie("gameID", gameID))
         })
 
-    // curl -v "localhost:3001/game/guess/2" -b "gameID=648afa12-94c1-43cf-97e0-243708ba77f0"
+    // curl -v "localhost:3001/game/guess/0" -b "gameID=#ID_PROVIDED_BY_INITIAL_POST_RESPONSE#"
     case req @ GET -> Root / "game" / "guess" / IntVar(guess) =>
       val gameID = req.cookies.find(_.name == "gameID")
       val gameIDValue = gameID.flatMap(id => Option(id.content))
 
-      Ok(s"$gameIDValue")
-
-//      gameIDValue match {
-//        case Some(id) => currentGames.games.find(_.id == id) match {
-//            case Some(game) =>
-//              if (guess == game.numberToGuess) {
-//                currentGames = currentGames.removeGame(game)
-//                Ok(s"Congratulations $guess was correct!").map(_.removeCookie("gameID"))
-//              } else if (game.attempts == 1) {
-//                if (guess > game.numberToGuess) {
-//                  currentGames = currentGames.removeGame(game)
-//                  Ok("Your guess was too high, you lose!").map(_.removeCookie("gameID"))
-//                } else {
-//                  currentGames = currentGames.removeGame(game)
-//                  Ok("Your guess was too low, you lose!").map(_.removeCookie("gameID"))
-//                }
-//              } else {
-//                if (guess > game.numberToGuess) {
-//                  currentGames = currentGames.updateGame(game)
-//                  Ok(s"Your guess was too high! Attempts left: ${game.attempts - 1}")
-//                } else {
-//                  currentGames = currentGames.updateGame(game)
-//                  Ok(s"Your guess was too low! Attempts left: ${game.attempts - 1}")
-//                }
-//              }
-//            case None       => BadRequest("Don't cheat the system!")
-//          }
-//        case None     => BadRequest("You are an alien!")
-//      }
+      gameIDValue match {
+        case Some(id) => currentGames.games.find(_.id == id) match {
+            case Some(game) =>
+              if (guess == game.numberToGuess) {
+                currentGames = currentGames.removeGame(game)
+                Ok(s"Congratulations $guess was correct!").map(_.removeCookie("gameID"))
+              } else if (game.attempts == 1) {
+                if (guess > game.numberToGuess) {
+                  currentGames = currentGames.removeGame(game)
+                  Ok(s"Your guess of $guess was too high, you lose!").map(_.removeCookie("gameID"))
+                } else {
+                  currentGames = currentGames.removeGame(game)
+                  Ok(s"Your guess of $guess was too low, you lose!").map(_.removeCookie("gameID"))
+                }
+              } else {
+                if (guess > game.numberToGuess) {
+                  currentGames = currentGames.updateGame(game)
+                  Ok(s"Your guess of $guess was too high! Attempts left: ${game.attempts - 1}").map(_.addCookie(
+                    "gameID",
+                    id
+                  ))
+                } else {
+                  currentGames = currentGames.updateGame(game)
+                  Ok(s"Your guess of $guess was too low! Attempts left: ${game.attempts - 1}").map(_.addCookie(
+                    "gameID",
+                    id
+                  ))
+                }
+              }
+            case None       => BadRequest("Don't cheat the system!")
+          }
+        case None     => BadRequest("You are an alien!")
+      }
   }.orNotFound
 }
 
@@ -121,16 +127,28 @@ object GuessClient extends IOApp {
 
   private def printLine(string: String = ""): IO[Unit] = IO(println(string))
 
+  private def letTheGameBegin(client: Client[IO], response: Response[IO]): IO[Unit] = for {
+    _       <- response.as[String] >>= printLine
+    cookies <- IO(response.cookies)
+    _       <- cookies.find(_.name == "gameID") match {
+      case Some(v) if v.content.nonEmpty /* #removeCookie removes only the content */ =>
+        for {
+          req <- GET(uri / "game" / "guess" / "4").map(_.addCookie(RequestCookie(v.name, v.content)))
+          _   <- printLine(string = "Trying to guess the number:")
+          res <- client.run(req).use(IO(_))
+          _   <- letTheGameBegin(client, res)
+        } yield ()
+      case _                                                                          => IO(())
+    }
+  } yield ()
+
   def run(args: List[String]): IO[ExitCode] =
     BlazeClientBuilder[IO](ExecutionContext.global).resource.use(client =>
       for {
-        _ <- printLine(string = "Providing game parameters:")
-        _ <- client.expect[String](POST(Template(0, 5, 3), uri / "game"))
-          .flatMap(printLine)
-        _ <- printLine()
-
-        _ <- printLine(string = "Trying to guess the number:")
-        _ <- client.expect[String](GET(uri / "game" / "guess" / "4")).flatMap(printLine)
+        _              <- printLine(string = "Providing game parameters:")
+        initialRequest <- POST(Template(0, 5, 3), uri / "game")
+        firstResponse  <- client.run(initialRequest).use(IO(_))
+        _              <- letTheGameBegin(client, firstResponse)
       } yield ()
     ).as(ExitCode.Success)
 }
