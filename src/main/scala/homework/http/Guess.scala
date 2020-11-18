@@ -35,14 +35,14 @@ object GuessServer extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     BlazeServerBuilder[IO](ExecutionContext.global)
-      .bindHttp(port = 3001, host = "localhost")
+      .bindHttp(port = 6000, host = "localhost")
       .withHttpApp(httpApp)
       .serve
       .compile
       .drain
       .as(ExitCode.Success)
 
-  var currentGames: GameCache = GameCache.create(Nil)
+  val currentGames: GameCache = GameCache.create(Nil)
 
   private val httpApp = HttpRoutes.of[IO] {
 
@@ -56,7 +56,7 @@ object GuessServer extends IOApp {
 
           formattedGame match {
             case Some(game) =>
-              currentGames = currentGames.addGame(game)
+              currentGames.addGame(game)
               Ok(
                 s"""Game has started! 
                    |You may begin guessing between ${template.min} and ${template.max} (Inclusive)""".stripMargin
@@ -81,25 +81,25 @@ object GuessServer extends IOApp {
         case Some(id) => currentGames.games.find(_.id == id) match {
             case Some(game) =>
               if (guess == game.numberToGuess.num) {
-                currentGames = currentGames.removeGame(game)
+                currentGames.removeGame(game)
                 Ok(s"Congratulations $guess was correct!").map(_.removeCookie("gameID"))
               } else if (game.attempts == 1) {
                 if (guess > game.numberToGuess.num) {
-                  currentGames = currentGames.removeGame(game)
+                  currentGames.removeGame(game)
                   Ok(s"Your guess of $guess was too high, you lose!").map(_.removeCookie("gameID"))
                 } else {
-                  currentGames = currentGames.removeGame(game)
+                  currentGames.removeGame(game)
                   Ok(s"Your guess of $guess was too low, you lose!").map(_.removeCookie("gameID"))
                 }
               } else {
                 if (guess > game.numberToGuess.num) {
-                  currentGames = currentGames.updateGame(game)
+                  currentGames.updateGame(game)
                   Ok(s"Your guess of $guess was too high! Attempts left: ${game.attempts - 1}").map(_.addCookie(
                     "gameID",
                     id
                   ))
                 } else {
-                  currentGames = currentGames.updateGame(game)
+                  currentGames.updateGame(game)
                   Ok(s"Your guess of $guess was too low! Attempts left: ${game.attempts - 1}").map(_.addCookie(
                     "gameID",
                     id
