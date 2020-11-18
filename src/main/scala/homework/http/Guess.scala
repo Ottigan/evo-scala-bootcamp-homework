@@ -1,9 +1,7 @@
 package homework.http
 
 import cats.effect.{ExitCode, IO, IOApp}
-import cats.syntax.option._
 import cats.implicits.catsSyntaxFlatMapOps
-
 import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
@@ -13,9 +11,7 @@ import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.Client
 import org.http4s.circe.CirceEntityCodec._
 import io.circe.generic.auto._
-
 import scala.concurrent.ExecutionContext
-import scala.util.{Random, Try}
 
 // Homework. Place the solution under `http` package in your homework repository.
 //
@@ -34,32 +30,6 @@ import scala.util.{Random, Try}
 // Use HTTP or WebSocket for communication. The exact protocol and message format to use is not specified and
 // should be designed while working on the task.
 final case class Template(min: Int, max: Int, attempts: Int)
-
-case class RandomNumber(num: Int) extends AnyVal
-object RandomNumber {
-  def create(min: Int, max: Int): Option[RandomNumber] = Try(Random.between(min, max + 1)).toOption match {
-    case Some(v) => RandomNumber(v).some
-    case None    => None
-  }
-}
-
-final case class Game(min: Int, max: Int, attempts: Int, numberToGuess: RandomNumber, id: String)
-object Game {
-  def create(t: Template, optionOfNumber: Option[RandomNumber], id: String): Option[Game] = optionOfNumber match {
-    case Some(number) if t.min <= t.max && t.attempts > 0 => Some(Game(t.min, t.max, t.attempts, number, id))
-    case None                                             => None
-  }
-}
-
-final case class GameCache(games: List[Game]) {
-  def addGame(game: Game): GameCache = GameCache.create(games :+ game)
-  def removeGame(game: Game): GameCache = GameCache.create(games.filterNot(_ == game))
-  def updateGame(game: Game): GameCache = removeGame(game).addGame(game.copy(attempts = game.attempts - 1))
-}
-
-object GameCache {
-  def create(games: List[Game]): GameCache = GameCache(games)
-}
 
 object GuessServer extends IOApp {
 
