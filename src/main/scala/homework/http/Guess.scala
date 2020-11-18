@@ -38,17 +38,17 @@ object Game {
   def create(t: Template, number: Int, id: String): Game = Game(t.min, t.max, t.attempts, number, id)
 }
 
-final case class CurrentGames(games: List[Game]) {
-  def addGame(game: Game): CurrentGames = CurrentGames.create(games :+ game)
-  def removeGame(game: Game): CurrentGames = CurrentGames.create(games.filterNot(_ == game))
-  def updateGame(game: Game): CurrentGames = {
+final case class GameCache(games: List[Game]) {
+  def addGame(game: Game): GameCache = GameCache.create(games :+ game)
+  def removeGame(game: Game): GameCache = GameCache.create(games.filterNot(_ == game))
+  def updateGame(game: Game): GameCache = {
     val updatedGame = game.copy(attempts = game.attempts - 1)
 
     removeGame(game).addGame(updatedGame)
   }
 }
-object CurrentGames {
-  def create(games: List[Game]): CurrentGames = CurrentGames(games)
+object GameCache {
+  def create(games: List[Game]): GameCache = GameCache(games)
 }
 
 object GuessServer extends IOApp {
@@ -62,7 +62,7 @@ object GuessServer extends IOApp {
       .drain
       .as(ExitCode.Success)
 
-  var currentGames: CurrentGames = CurrentGames.create(Nil)
+  var currentGames: GameCache = GameCache.create(Nil)
 
   private val httpApp = HttpRoutes.of[IO] {
 
