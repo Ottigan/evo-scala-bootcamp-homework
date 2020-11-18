@@ -33,20 +33,20 @@ final case class Template(min: Int, max: Int, attempts: Int)
 
 object GuessServer extends IOApp {
 
+  val currentGames: GameCache = GameCache.create(Nil)
+
   override def run(args: List[String]): IO[ExitCode] =
     BlazeServerBuilder[IO](ExecutionContext.global)
-      .bindHttp(port = 6000, host = "localhost")
+      .bindHttp(port = 9000, host = "localhost")
       .withHttpApp(httpApp)
       .serve
       .compile
       .drain
       .as(ExitCode.Success)
 
-  val currentGames: GameCache = GameCache.create(Nil)
-
   private val httpApp = HttpRoutes.of[IO] {
 
-    // curl -POST -v "localhost:3001/game" -d '{"min": 0, "max": 5, "attempts": 3}' -H "Content-Type: application/json"
+    // curl -POST -v "localhost:9000/game" -d '{"min": 0, "max": 5, "attempts": 3}' -H "Content-Type: application/json"
     case req @ POST -> Root / "game"                          =>
       req.as[Template]
         .flatMap(template => {
@@ -56,10 +56,13 @@ object GuessServer extends IOApp {
 
           formattedGame match {
             case Some(game) =>
-              currentGames.addGame(game)
+              currentGames.add(game)
+              println(currentGames.getAll)
+
               Ok(
                 s"""Game has started! 
-                   |You may begin guessing between ${template.min} and ${template.max} (Inclusive)""".stripMargin
+                   |You may begin guessing between ${template.min} and ${template.max} (Inclusive)
+                   |Attempts: ${template.attempts}""".stripMargin
               )
                 .map(_.addCookie("gameID", gameID))
             case None       =>
@@ -72,34 +75,34 @@ object GuessServer extends IOApp {
           }
         })
 
-    // curl -v "localhost:3001/game/guess/0" -b "gameID=#ID_PROVIDED_BY_INITIAL_POST_RESPONSE#"
+    // curl -v "localhost:9000/game/guess/0" -b "gameID=#ID_PROVIDED_BY_INITIAL_POST_RESPONSE#"
     case req @ GET -> Root / "game" / "guess" / IntVar(guess) =>
       val gameID = req.cookies.find(_.name == "gameID")
-      val gameIDValue = gameID.flatMap(id => Option(id.content))
+      val gameIDValue = gameID.map(id => id.content)
 
       gameIDValue match {
-        case Some(id) => currentGames.games.find(_.id == id) match {
+        case Some(id) => currentGames.get(id) match {
             case Some(game) =>
               if (guess == game.numberToGuess.num) {
-                currentGames.removeGame(game)
+                currentGames.remove(game)
                 Ok(s"Congratulations $guess was correct!").map(_.removeCookie("gameID"))
               } else if (game.attempts == 1) {
                 if (guess > game.numberToGuess.num) {
-                  currentGames.removeGame(game)
+                  currentGames.remove(game)
                   Ok(s"Your guess of $guess was too high, you lose!").map(_.removeCookie("gameID"))
                 } else {
-                  currentGames.removeGame(game)
+                  currentGames.remove(game)
                   Ok(s"Your guess of $guess was too low, you lose!").map(_.removeCookie("gameID"))
                 }
               } else {
                 if (guess > game.numberToGuess.num) {
-                  currentGames.updateGame(game)
+                  currentGames.update(game)
                   Ok(s"Your guess of $guess was too high! Attempts left: ${game.attempts - 1}").map(_.addCookie(
                     "gameID",
                     id
                   ))
                 } else {
-                  currentGames.updateGame(game)
+                  currentGames.update(game)
                   Ok(s"Your guess of $guess was too low! Attempts left: ${game.attempts - 1}").map(_.addCookie(
                     "gameID",
                     id
@@ -116,7 +119,7 @@ object GuessServer extends IOApp {
 object GuessClient extends IOApp {
   import org.http4s.Method._
 
-  private val uri = uri"http://localhost:3001"
+  private val uri = uri"http://localhost:9000"
 
   private def printLine(string: String = ""): IO[Unit] = IO(println(string))
 

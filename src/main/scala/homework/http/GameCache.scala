@@ -1,11 +1,23 @@
 package homework.http
 
-final case class GameCache(games: List[Game]) {
-  def addGame(game: Game): GameCache = GameCache.create(games :+ game)
-  def removeGame(game: Game): GameCache = GameCache.create(games.filterNot(_ == game))
-  def updateGame(game: Game): GameCache = removeGame(game).addGame(game.copy(attempts = game.attempts - 1))
+sealed abstract case class GameCache private (game: List[Game]) {
+  def add(game: Game): Unit
+  def get(id: String): Option[Game]
+  def getAll: List[Game]
+  def remove(game: Game): Unit
+  def update(game: Game): Unit
 }
 
 object GameCache {
-  def create(games: List[Game]): GameCache = GameCache(games)
+  def create(games: List[Game]): GameCache = new GameCache(games) {
+    var cache: List[Game] = List.empty[Game]
+    override def add(game: Game): Unit = cache = cache :+ game
+    override def get(id: String): Option[Game] = cache.find(_.id == id)
+    override def getAll: List[Game] = cache
+    override def remove(game: Game): Unit = cache = cache.filterNot(_ == game)
+    override def update(game: Game): Unit = {
+      remove(game)
+      add(game.copy(attempts = game.attempts - 1))
+    }
+  }
 }
