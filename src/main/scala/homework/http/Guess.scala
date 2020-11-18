@@ -1,20 +1,21 @@
 package homework.http
 
 import cats.effect.{ExitCode, IO, IOApp}
+import cats.syntax.option._
 import cats.implicits.catsSyntaxFlatMapOps
+
 import org.http4s._
 import org.http4s.dsl.io._
 import org.http4s.client.dsl.io._
 import org.http4s.implicits._
 import org.http4s.server.blaze.BlazeServerBuilder
 import org.http4s.client.blaze.BlazeClientBuilder
+import org.http4s.client.Client
 import org.http4s.circe.CirceEntityCodec._
+import io.circe.generic.auto._
 
 import scala.concurrent.ExecutionContext
-import io.circe.generic.auto._
-import org.http4s.client.Client
-
-import scala.util.Random
+import scala.util.{Random, Try}
 
 // Homework. Place the solution under `http` package in your homework repository.
 //
@@ -33,20 +34,29 @@ import scala.util.Random
 // Use HTTP or WebSocket for communication. The exact protocol and message format to use is not specified and
 // should be designed while working on the task.
 final case class Template(min: Int, max: Int, attempts: Int)
-final case class Game(min: Int, max: Int, attempts: Int, numberToGuess: Int, id: String)
+
+case class RandomNumber(num: Int) extends AnyVal
+object RandomNumber {
+  def create(min: Int, max: Int): Option[RandomNumber] = Try(Random.between(min, max + 1)).toOption match {
+    case Some(v) => RandomNumber(v).some
+    case None    => None
+  }
+}
+
+final case class Game(min: Int, max: Int, attempts: Int, numberToGuess: RandomNumber, id: String)
 object Game {
-  def create(t: Template, number: Int, id: String): Game = Game(t.min, t.max, t.attempts, number, id)
+  def create(t: Template, optionOfNumber: Option[RandomNumber], id: String): Option[Game] = optionOfNumber match {
+    case Some(number) if t.min <= t.max && t.attempts > 0 => Some(Game(t.min, t.max, t.attempts, number, id))
+    case None                                             => None
+  }
 }
 
 final case class GameCache(games: List[Game]) {
   def addGame(game: Game): GameCache = GameCache.create(games :+ game)
   def removeGame(game: Game): GameCache = GameCache.create(games.filterNot(_ == game))
-  def updateGame(game: Game): GameCache = {
-    val updatedGame = game.copy(attempts = game.attempts - 1)
-
-    removeGame(game).addGame(updatedGame)
-  }
+  def updateGame(game: Game): GameCache = removeGame(game).addGame(game.copy(attempts = game.attempts - 1))
 }
+
 object GameCache {
   def create(games: List[Game]): GameCache = GameCache(games)
 }
@@ -70,13 +80,26 @@ object GuessServer extends IOApp {
     case req @ POST -> Root / "game"                          =>
       req.as[Template]
         .flatMap(template => {
-          val randomNumber = Random.between(template.min, template.max + 1)
+          val randomNumber = RandomNumber.create(template.min, template.max)
           val gameID = java.util.UUID.randomUUID.toString
           val formattedGame = Game.create(template, randomNumber, gameID)
-          currentGames = currentGames.addGame(formattedGame)
 
-          Ok(s"Game has started, you may begin guessing between ${template.min} and ${template.max}")
-            .map(_.addCookie("gameID", gameID))
+          formattedGame match {
+            case Some(game) =>
+              currentGames = currentGames.addGame(game)
+              Ok(
+                s"""Game has started! 
+                   |You may begin guessing between ${template.min} and ${template.max} (Inclusive)""".stripMargin
+              )
+                .map(_.addCookie("gameID", gameID))
+            case None       =>
+              Ok(
+                s"""Game could not be initiated from the provided parameters! 
+                   |Min:${template.min} 
+                   |Max:${template.max} 
+                   |Attempts:${template.attempts}""".stripMargin
+              )
+          }
         })
 
     // curl -v "localhost:3001/game/guess/0" -b "gameID=#ID_PROVIDED_BY_INITIAL_POST_RESPONSE#"
@@ -87,11 +110,11 @@ object GuessServer extends IOApp {
       gameIDValue match {
         case Some(id) => currentGames.games.find(_.id == id) match {
             case Some(game) =>
-              if (guess == game.numberToGuess) {
+              if (guess == game.numberToGuess.num) {
                 currentGames = currentGames.removeGame(game)
                 Ok(s"Congratulations $guess was correct!").map(_.removeCookie("gameID"))
               } else if (game.attempts == 1) {
-                if (guess > game.numberToGuess) {
+                if (guess > game.numberToGuess.num) {
                   currentGames = currentGames.removeGame(game)
                   Ok(s"Your guess of $guess was too high, you lose!").map(_.removeCookie("gameID"))
                 } else {
@@ -99,7 +122,7 @@ object GuessServer extends IOApp {
                   Ok(s"Your guess of $guess was too low, you lose!").map(_.removeCookie("gameID"))
                 }
               } else {
-                if (guess > game.numberToGuess) {
+                if (guess > game.numberToGuess.num) {
                   currentGames = currentGames.updateGame(game)
                   Ok(s"Your guess of $guess was too high! Attempts left: ${game.attempts - 1}").map(_.addCookie(
                     "gameID",
@@ -129,6 +152,7 @@ object GuessClient extends IOApp {
 
   private def letTheGameBegin(client: Client[IO], response: Response[IO]): IO[Unit] = for {
     _       <- response.as[String] >>= printLine
+    _       <- printLine()
     cookies <- IO(response.cookies)
     _       <- cookies.find(_.name == "gameID") match {
       case Some(v) if v.content.nonEmpty /* #removeCookie removes only the content */ =>
