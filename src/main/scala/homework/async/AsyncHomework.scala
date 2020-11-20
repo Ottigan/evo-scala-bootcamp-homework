@@ -7,6 +7,7 @@ import cats.implicits._
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
+import scala.util.{Failure, Success}
 
 /**
   * Application:
@@ -24,11 +25,13 @@ object AsyncHomework extends App {
   private implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(Executors.newCachedThreadPool())
 
   for {
-    arg   <- args
-    body  <- fetchPageBody(arg)
-    urls  <- findLinkUrls(body)
-    names <- Future.sequence(urls.map(fetchServerName))
-  } names.map(_.getOrElse("")).filter(_ != "").distinct.sorted.foreach(println)
+    arg  <- args
+    body <- fetchPageBody(arg)
+    urls <- findLinkUrls(body)
+  } Future.sequence(urls.map(fetchServerName)).onComplete {
+    case Success(v) => v.flatten.distinct.sorted.foreach(println)
+    case Failure(e) => println(e.getMessage)
+  }
 
   private def fetchPageBody(url: String): Future[String] = {
     println(f"Fetching $url")
