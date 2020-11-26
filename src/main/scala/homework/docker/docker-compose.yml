@@ -1,17 +1,17 @@
-version: "3.8"
+version: '3.8'
 services:
   mailcatcher:
-    image: "tophfr/mailcatcher:latest"
+    image: 'tophfr/mailcatcher:latest'
     ports:
-      - "80"
-      - "25"
+      - '80:80' # development port
+      - '25:25'
     deploy:
       restart_policy:
         condition: on-failure
   redis:
-    image: "redis:latest"
+    image: 'redis:latest'
     ports:
-      - "6379"
+      - '6379:6379'
     deploy:
       restart_policy:
         condition: on-failure
